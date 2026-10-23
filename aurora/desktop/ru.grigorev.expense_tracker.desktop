@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Трекер расходов
+Comment=Учёт личных и служебных расходов
+Icon=ru.grigorev.expense_tracker
+Exec=/usr/bin/ru.grigorev.expense_tracker
+X-Nemo-Application-Type=silica-qt5
+
+[X-Application]
+Permissions=
+OrganizationName=ru.grigorev
+ApplicationName=expense_tracker
