@@ -12,6 +12,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  # Состояние и DI. Чистый Dart — берём с pub.dev как есть
+  flutter_riverpod: ^3.3.2
+
+  # Аврора-виджеты (AuroraApp, AuroraAppBar, AuroraPageRoute).
+  # Поставляется в составе Flutter SDK Авроры — git-зависимость не нужна.
+  aurora_controls: ^1.0.0
 
 dev_dependencies:
   flutter_test:
