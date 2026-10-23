@@ -1,17 +1,16 @@
-# expense_tracker
+# Трекер расходов — приложение для ОС Аврора
 
-A new Flutter project.
+Мобильное приложение учёта личных и служебных расходов, разработанное на
+Flutter для ОС Аврора в рамках полуфинала олимпиады Волга-IT 2026
+по дисциплине "Технология Flutter на ОС Аврора".
 
-## Getting Started
+Приложение помогает вести домашнюю бухгалтерию и оформлять служебные траты:
+быстрое добавление траты со всеми полями, чеки с камеры и из галереи,
+импорт из CSV, командировки для служебных поездок и наглядный дашборд
+со столбчатыми и круговыми диаграммами.
 
-This project is a starting point for a Flutter application.
+## Лицензия и авторы
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Код распространяется по лицензии BSD-3-Clause — см. [LICENSE](LICENSE).
+Авторы проекта перечислены в [AUTHORS.md](AUTHORS.md).
+Журнал использованных ИИ-промптов ведётся в [PROMPTS.md](PROMPTS.md).

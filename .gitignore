@@ -45,3 +45,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# VS Code
+.vscode/
+
+# Linux-мусор
+*~
+
+# Собранные пакеты
+*.rpm
+/aurora/build/
