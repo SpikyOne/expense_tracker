@@ -24,7 +24,34 @@ import 'presentation/screens/expenses/expenses_screen.dart';
 import 'presentation/screens/import_csv/import_csv_screen.dart';
 import 'presentation/screens/trips/trips_screen.dart';
 
+import 'dart:ffi';
+import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3/open.dart';
+
+void configureSqliteForAurora() {
+  open.overrideFor(OperatingSystem.linux, () {
+    try {
+      return DynamicLibrary.open('libsqlite3.so.0');
+    } catch (_) {
+      return DynamicLibrary.open('libsqlite3.so');
+    }
+  });
+}
+
+
+
 void main() {
+
+  configureSqliteForAurora();
+  try {
+    final db = sqlite3.openInMemory();
+    final v = db.select('SELECT sqlite_version() AS v').first['v'];
+    debugPrint('SQLite OK, версия: $v');
+    db.dispose();
+  } catch (e) {
+    debugPrint('SQLite FAIL: $e');
+  }
+
   runApp(const ProviderScope(child: ExpenseTrackerApp()));
 }
 

@@ -19,6 +19,7 @@ dependencies:
   # Аврора-виджеты (AuroraApp, AuroraAppBar, AuroraPageRoute).
   # Поставляется в составе Flutter SDK Авроры — git-зависимость не нужна.
   aurora_controls: ^1.0.0
+  sqlite3: ^2.9.4
 
 dev_dependencies:
   flutter_test:
