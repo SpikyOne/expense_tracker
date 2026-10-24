@@ -11,43 +11,29 @@
 //   lib/presentation/  - экраны и виджеты (Aurora Controls)
 //   lib/state/         - Riverpod-провайдеры и нотифаеры
 //   lib/domain/        - модели, интерфейсы, сервисы (чистый Dart)
-//   lib/data/          - Drift-база, DAO, репозитории, CSV-слой
+//   lib/data/          - SQLite (sqlite3 FFI), DAO, репозитории, CSV-слой
 //   lib/core/          - утилиты: деньги, даты, форматтеры
 
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/database/database_service.dart';
 import 'presentation/screens/categories/categories_screen.dart';
 import 'presentation/screens/dashboard/dashboard_screen.dart';
 import 'presentation/screens/expenses/expenses_screen.dart';
 import 'presentation/screens/import_csv/import_csv_screen.dart';
 import 'presentation/screens/trips/trips_screen.dart';
 
-import 'dart:ffi';
-import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3/open.dart';
-
-void configureSqliteForAurora() {
-  open.overrideFor(OperatingSystem.linux, () {
-    try {
-      return DynamicLibrary.open('libsqlite3.so.0');
-    } catch (_) {
-      return DynamicLibrary.open('libsqlite3.so');
-    }
-  });
-}
-
 void main() {
-  configureSqliteForAurora();
-  try {
-    final db = sqlite3.openInMemory();
-    final v = db.select('SELECT sqlite_version() AS v').first['v'];
-    debugPrint('SQLite OK, версия: $v');
-    db.dispose();
-  } catch (e) {
-    debugPrint('SQLite FAIL: $e');
-  }
+  
+  // TODO(М2.6): убрать временную проверку — соединение БД переедет в
+  // Riverpod-провайдеры. Пока так убеждаемся, что на устройстве создаются
+  // каталог и файл, применяется схема и отрабатывает сид.
+  final db = DatabaseService.open();
+  debugPrint('БД: ${db.path} (схема v${db.currentSchemaVersion})');
+  debugPrint('Категорий после сида: ${db.getCategories().length}');
+  db.close();
 
   runApp(const ProviderScope(child: ExpenseTrackerApp()));
 }
