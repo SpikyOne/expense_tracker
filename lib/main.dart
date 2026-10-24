@@ -2,58 +2,79 @@
 //
 // Стартовая точка приложения «Трекер расходов» для ОС Аврора.
 //
-// Это МИНИМАЛЬНЫЙ каркас без внешних зависимостей: он гарантированно
-// собирается сразу после flutter-aurora create.
-// Этот файл заменяется версией на AuroraApp +
-// aurora_controls, а по слоям lib/ раскладывается логика проекта:
+// Корень - AuroraApp из пакета aurora_controls: нативная тема и
+// окружение ОС Аврора вместо Material-скина. Обёртка ProviderScope
+// включает Riverpod — состояние приложения живёт через него.
 //
-//   lib/presentation/  — экраны и виджеты (Aurora Controls)
-//   lib/state/         — Riverpod-провайдеры и нотифаеры
-//   lib/domain/        — модели, интерфейсы, сервисы (чистый Dart)
-//   lib/data/          — Drift-база, DAO, репозитории, CSV-слой
-//   lib/core/          — утилиты: деньги, даты, форматеры
+// Слои проекта:
+//
+//   lib/presentation/  - экраны и виджеты (Aurora Controls)
+//   lib/state/         - Riverpod-провайдеры и нотифаеры
+//   lib/domain/        - модели, интерфейсы, сервисы (чистый Dart)
+//   lib/data/          - Drift-база, DAO, репозитории, CSV-слой
+//   lib/core/          - утилиты: деньги, даты, форматтеры
 
+import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  runApp(const ExpenseTrackerApp());
+  runApp(const ProviderScope(child: ExpenseTrackerApp()));
 }
 
 /// Корневой виджет приложения.
 ///
-/// На следующем этапе MaterialApp заменяется на AuroraApp из пакета
-/// aurora_controls — это даст нативный вид и поддержку атмосфер ОС Аврора.
+/// AuroraApp — аврора-аналог MaterialApp: даёт нативный вид,
+/// поддержку атмосфер ОС и аврора-модель навигации.
 class ExpenseTrackerApp extends StatelessWidget {
   const ExpenseTrackerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Трекер расходов',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3681A6))),
-      home: const HomePage(),
-    );
-  }
+  // Окно эмулятора отдаёт светлую тему, при этом атмосфера не отрисована
+  // (чёрный холст) — светлые цвета темы на нём нечитаемы.
+  return AuroraApp(
+    themeMode: ThemeMode.dark, // форс AuroraThemeData.reefDark()
+    home: const HomePage(),
+  );
+}
 }
 
-/// Временный главный экран: подтверждает, что сборка и запуск работают.
+/// Главный экран — корень навигационного стека.
+///
+/// Сюда ляжет список разделов (Траты, Дашборд, Категории,
+/// Командировки, Импорт CSV) с переходами через AuroraPageRoute.
+///
+/// Паттерн Авроры: на корневом экране нет AuroraAppBar — заголовок
+/// оформляется AuroraPageHeader в теле. AuroraAppBar появится на
+/// внутренних страницах, куда ведёт AuroraPageRoute.
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Трекер расходов')),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Каркас проекта развёрнут.\n'
-            'Дальше — этап 1 дорожной карты:\n'
-            'git-репозиторий, AuroraApp, навигация.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, height: 1.6),
+    return SafeArea(
+      child: Scaffold(
+        // Фон рисует атмосфера ОС: канвас остаётся прозрачным.
+        backgroundColor: Colors.transparent,
+        body: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: 16),
+              AuroraPageHeader('Трекер расходов'),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    'Каркас на AuroraApp готов.\n'
+                    'Дальше — навигация по разделам.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, height: 1.6),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
