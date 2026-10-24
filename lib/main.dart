@@ -38,10 +38,7 @@ void configureSqliteForAurora() {
   });
 }
 
-
-
 void main() {
-
   configureSqliteForAurora();
   try {
     final db = sqlite3.openInMemory();
