@@ -8,12 +8,6 @@ include: package:flutter_lints/flutter.yaml
 formatter:
   page_width: 120
 
-analyzer:
-  exclude:
-    # Генерируемый код (drift -> *.g.dart, freezed -> *.freezed.dart).
-    - "**/*.g.dart"
-    - "**/*.freezed.dart"
-
 linter:
   rules:
     # Единый стиль: строки в одинарных кавычках.
