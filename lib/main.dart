@@ -18,6 +18,12 @@ import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'presentation/screens/categories/categories_screen.dart';
+import 'presentation/screens/dashboard/dashboard_screen.dart';
+import 'presentation/screens/expenses/expenses_screen.dart';
+import 'presentation/screens/import_csv/import_csv_screen.dart';
+import 'presentation/screens/trips/trips_screen.dart';
+
 void main() {
   runApp(const ProviderScope(child: ExpenseTrackerApp()));
 }
@@ -26,24 +32,25 @@ void main() {
 ///
 /// AuroraApp — аврора-аналог MaterialApp: даёт нативный вид,
 /// поддержку атмосфер ОС и аврора-модель навигации.
-class ExpenseTrackerApp extends StatelessWidget {
+class ExpenseTrackerApp extends StatefulWidget {
   const ExpenseTrackerApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-  // Окно эмулятора отдаёт светлую тему, при этом атмосфера не отрисована
-  // (чёрный холст) — светлые цвета темы на нём нечитаемы.
-  return AuroraApp(
-    themeMode: ThemeMode.dark, // форс AuroraThemeData.reefDark()
-    home: const HomePage(),
-  );
+  State<ExpenseTrackerApp> createState() => _ExpenseTrackerAppState();
 }
+
+class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
+  // Ключ навигатора нужен AuroraApp, чтобы показывать индикатор «Назад»
+  // у нижнего края экрана на внутренних страницах.
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
+
+  @override
+  Widget build(BuildContext context) {
+    return AuroraApp(navigatorKey: _navKey, themeMode: ThemeMode.dark, home: const HomePage());
+  }
 }
 
 /// Главный экран — корень навигационного стека.
-///
-/// Сюда ляжет список разделов (Траты, Дашборд, Категории,
-/// Командировки, Импорт CSV) с переходами через AuroraPageRoute.
 ///
 /// Паттерн Авроры: на корневом экране нет AuroraAppBar — заголовок
 /// оформляется AuroraPageHeader в теле. AuroraAppBar появится на
@@ -51,30 +58,33 @@ class ExpenseTrackerApp extends StatelessWidget {
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  static final Map<String, WidgetBuilder> _sections = {
+    'Траты': (_) => const ExpensesScreen(),
+    'Дашборд': (_) => const DashboardScreen(),
+    'Категории': (_) => const CategoriesScreen(),
+    'Командировки': (_) => const TripsScreen(),
+    'Импорт CSV': (_) => const ImportCsvScreen(),
+  };
+
   @override
   Widget build(BuildContext context) {
+    final theme = AuroraTheme.of(context);
     return SafeArea(
       child: Scaffold(
-        // Фон рисует атмосфера ОС: канвас остаётся прозрачным.
         backgroundColor: Colors.transparent,
-        body: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(height: 16),
-              AuroraPageHeader('Трекер расходов'),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    'Каркас на AuroraApp готов.\n'
-                    'Дальше — навигация по разделам.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, height: 1.6),
+        body: SingleChildScrollView(
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              children: [
+                const AuroraPageHeader('Трекер расходов'),
+                for (final entry in _sections.entries)
+                  ListTile(
+                    title: Text(entry.key, style: theme.textThemeData.regularMedium),
+                    onTap: () => Navigator.of(context).push(AuroraPageRoute<void>(builder: entry.value)),
                   ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
