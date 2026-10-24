@@ -3,3 +3,4 @@
 // Barrel доменных моделей: импортируем один файл вместо отдельных моделей.
 export 'category.dart';
 export 'expense.dart';
+export 'trip.dart';
