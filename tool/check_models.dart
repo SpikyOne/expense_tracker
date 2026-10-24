@@ -5,6 +5,8 @@
 // сломан (не компилирует даже dart:core) — ограничение SDK, не проекта.
 // Запуск: dart-aurora run tool/check_models.dart
 
+// ignore_for_file: avoid_print
+
 import 'dart:io' show exit;
 
 import 'package:expense_tracker/domain/models/models.dart';
