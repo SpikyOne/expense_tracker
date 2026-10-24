@@ -10,7 +10,7 @@
 //   * способ оплаты — enum ровно из 4 значений ТЗ;
 //   * маппинг в/из SQLite ручной, без кодогенерации.
 //
-// Хранение — таблица expenses (схема появится в М2.3):
+// Хранение — таблица expenses (схема v2, миграции в DatabaseService):
 //
 //   id              INTEGER PRIMARY KEY AUTOINCREMENT
 //   amount_kopecks  INTEGER NOT NULL CHECK (amount_kopecks >= 0)
@@ -22,6 +22,9 @@
 //   comment         TEXT NOT NULL DEFAULT ''
 //   is_business     INTEGER NOT NULL DEFAULT 0
 //   trip_id         INTEGER REFERENCES trips(id) ON DELETE SET NULL
+//   search_text     TEXT NOT NULL DEFAULT '' (схема v2): нормализованный
+//                     «получатель + комментарий», заполняет DAO
+//                     через buildSearchText — поле домена не нужно
 
 /// Способы оплаты из ТЗ: карта, наличные, qr-code, иной.
 enum PaymentMethod {
@@ -60,6 +63,12 @@ class Expense {
   static const colComment = 'comment';
   static const colIsBusiness = 'is_business';
   static const colTripId = 'trip_id';
+  
+  /// Производная колонка поиска (схема v2). В toMap/fromMap не входит:
+  /// это хранилище для поиска, а не поле домена; DAO считает её
+  /// через [buildSearchText] при каждой вставке и правке.
+  static const colSearchText = 'search_text';
+
 
   /// id в БД; null — трата ещё не сохранена.
   final int? id;
@@ -109,6 +118,27 @@ class Expense {
   /// Рублях из поля ввода -> копейки: 19.99 -> 1999.
   /// round() страхует от двоичных хвостов вида 1998.9999999.
   static int rublesToKopecks(double rubles) => (rubles * 100).round();
+
+  // ---------- Поиск ----------
+
+  /// Всё, что не буква и не цифра (Unicode) — заменяем на пробел:
+  /// «ООО "Ромашка"» и «ООО Ромашка» должны искаться одинаково.
+  static final RegExp _notLetterOrDigit = RegExp(r'[^\p{L}\p{N}]+', unicode: true);
+
+  static final RegExp _whitespaceRun = RegExp(r'\s+');
+
+  /// Нормализованный текст траты для поиска: «получатель + комментарий».
+  ///
+  /// Зачем: lower() в SQLite без ICU опускает регистр только у ASCII,
+  /// кириллицу не трогает. Поэтому при записи в БД кладём готовую
+  /// нормализованную строку в колонку search_text (схема v2), а
+  /// поисковый запрос нормализуем этой же функцией — иначе строки
+  /// не совпадут. Правила: нижний регистр; ё -> е; пунктуация ->
+  /// пробел; пробелы схлопнуты; без пробелов по краям.
+  static String buildSearchText(String payee, String comment) {
+    final lowered = '$payee $comment'.toLowerCase().replaceAll('ё', 'е');
+    return lowered.replaceAll(_notLetterOrDigit, ' ').replaceAll(_whitespaceRun, ' ').trim();
+  }
 
   /// Та же трата с изменёнными полями — для формы редактирования.
   Expense copyWith({

@@ -8,7 +8,8 @@
 //   * путь к БД — по XDG-соглашению, чистым Dart;
 //   * версия схемы в PRAGMA user_version; миграции — цепочкой
 //     _migrateV N() от версии файла к актуальной;
-//   * сид 8 стандартных категорий из ТЗ — при первой инициализации.
+//   * сид: 8 стандартных категорий из ТЗ + служебная «Без категории» -
+//     идемпотентно, INSERT OR IGNORE по имени (доезжает в старые БД);
 
 import 'dart:ffi';
 import 'dart:io';
@@ -39,9 +40,15 @@ class DatabaseService {
 
   /// Актуальная версия схемы. При изменении схемы добавляем метод
   /// миграции _migrateV2(), _migrateV3() и инкрементируем это число.
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
-  /// Стандартные категории из ТЗ (8 штук).
+  /// Служебная категория: в неё переносятся траты при удалении
+  /// пользовательской. Защищена от удаления как стандартная,
+  /// в интерфейсах показывается последней среди стандартных.
+  static const String uncategorizedName = 'Без категории';
+
+  /// Стандартные категории из ТЗ (8 штук) + служебная «Без категории».
+  /// Порядок = порядок первого сида; «Без категории» — последней.
   static const List<String> defaultCategoryNames = [
     'Продукты',
     'Кафе',
@@ -51,6 +58,7 @@ class DatabaseService {
     'Здоровье',
     'Развлечение',
     'Обучение',
+    uncategorizedName,
   ];
 
   final Database _db;
@@ -92,9 +100,13 @@ class DatabaseService {
   /// Версия схемы, записанная в файле БД.
   int get currentSchemaVersion => _db.select('PRAGMA user_version;').first.values.first as int;
 
-  /// Все категории: стандартные первыми, внутри групп по алфавиту.
+  /// Все категории: стандартные первыми, «Без категории» — последней
+  /// среди стандартных, затем пользовательские; внутри групп по алфавиту.
   List<Category> getCategories() {
-    final rows = _db.select('SELECT * FROM categories ORDER BY is_default DESC, name;');
+    final rows = _db.select(
+      'SELECT * FROM categories ORDER BY is_default DESC, name = ?, name;',
+      [uncategorizedName],
+    );
     return rows.map(Category.fromMap).toList();
   }
 
@@ -104,8 +116,21 @@ class DatabaseService {
   /// Прикладной код использует только методы сервиса, не raw-запросы.
   void rawExecute(String sql, [List<Object?> parameters = const []]) => _db.execute(sql, parameters);
 
+  /// Чтение сырых строк — для проверок в tool/ и служебных нужд.
+  /// Прикладной код использует только методы сервиса и DAO, не raw-запросы.
+  List<Map<String, Object?>> rawSelect(String sql, [List<Object?> parameters = const []]) {
+    final result = _db.select(sql, parameters);
+    return [
+      for (final row in result) Map<String, Object?>.fromIterables(result.columnNames, row.values),
+    ];
+  }
+
   // ---------- Схема и миграции ----------
 
+  // Правило миграций: уже «выпущенный» шаг цепочки никогда не
+  // редактируется — изменения схемы только новым _migrateVN().
+  // Поэтому _migrateV1() остаётся ровно таким, каким был: свежая БД
+  // получает финальную схему цепочкой v1 -> v2, старая — одним шагом v2.
   void _migrateIfNeeded() {
     final current = currentSchemaVersion;
     if (current > schemaVersion) {
@@ -115,7 +140,8 @@ class DatabaseService {
       );
     }
     if (current < 1) _migrateV1();
-    // Будущие версии — цепочкой: if (current < 2) _migrateV2();
+    if (current < 2) _migrateV2();
+    // Будущие версии — цепочкой: if (current < 3) _migrateV3();
   }
 
   void _migrateV1() {
@@ -162,16 +188,57 @@ class DatabaseService {
     _db.execute('PRAGMA user_version = 1;');
   }
 
+  /// v1 -> v2 (М3.1): таблица чеков и поисковая колонка.
+  void _migrateV2() {
+    // Чеки: у траты может быть несколько фото (камера/галерея — ТЗ).
+    // Файлы лежат в каталоге данных приложения, в БД храним путь
+    // ОТНОСИТЕЛЬНО этого каталога: БД не привязывается к абсолютным путям.
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS receipts (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_id INTEGER NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+        file_path  TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+    ''');
+    _db.execute('CREATE INDEX IF NOT EXISTS idx_receipts_expense ON receipts (expense_id);');
+
+    // Поиск по кириллице: lower() в SQLite без ICU берёт только ASCII,
+    // поэтому храним готовую нормализованную строку «получатель +
+    // комментарий» (контракт — Expense.buildSearchText). Заполняется
+    // DAO при каждой вставке/правке траты.
+    _db.execute("ALTER TABLE expenses ADD COLUMN search_text TEXT NOT NULL DEFAULT '';");
+
+    // Бэкфилл: траты, созданные до v2 (девелоперская БД).
+    final rows = _db.select("SELECT id, payee, comment FROM expenses WHERE search_text = '';");
+    final update = _db.prepare('UPDATE expenses SET search_text = ? WHERE id = ?;');
+    try {
+      for (final row in rows) {
+        update.execute([
+          Expense.buildSearchText(row['payee'] as String? ?? '', row['comment'] as String? ?? ''),
+          row['id'],
+        ]);
+      }
+    } finally {
+      update.dispose();
+    }
+
+    _db.execute('PRAGMA user_version = 2;');
+  }
+
+  /// Идемпотентный сид: каждую стандартную категорию добавляем по имени,
+  /// только если её ещё нет (UNIQUE + INSERT OR IGNORE). Так новые
+  /// стандартные категории появляются и в уже существующих БД —
+  /// не только при первой инициализации.
   void _seedDefaultCategories() {
-    final n = _db.select('SELECT COUNT(*) AS n FROM categories;').first['n'] as int;
-    if (n > 0) return;
-    final stmt = _db.prepare('INSERT INTO categories (name, is_default) VALUES (?, ?);');
+    final stmt = _db.prepare('INSERT OR IGNORE INTO categories (name, is_default) VALUES (?, 1);');
     try {
       for (final name in defaultCategoryNames) {
-        stmt.execute([name, 1]);
+        stmt.execute([name]);
       }
     } finally {
       stmt.dispose();
     }
   }
+
 }

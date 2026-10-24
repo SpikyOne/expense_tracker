@@ -61,6 +61,19 @@ void main() {
   check('fromTitle(наличные)', PaymentMethod.fromTitle('наличные'), PaymentMethod.cash);
   check('fromTitle(  QR-код  )', PaymentMethod.fromTitle('  QR-код  '), PaymentMethod.qrCode);
 
+  // Поиск: нормализация search_text (схема v2)
+  check(
+    'buildSearchText: регистр, ё, пунктуация',
+    Expense.buildSearchText('ООО «Ромашка»', 'Кофе с Ёлкой!'),
+    'ооо ромашка кофе с елкой',
+  );
+  check('buildSearchText: пустые строки', Expense.buildSearchText('', ''), '');
+  check(
+    'buildSearchText: запрос нормализуется той же функцией',
+    Expense.buildSearchText('ЁЛКА', ''),
+    'елка',
+  );
+
   print('');
   print('Пройдено: $_passed, упало: $_failed');
   if (_failed > 0) {
