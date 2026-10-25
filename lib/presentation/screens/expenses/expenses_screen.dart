@@ -13,6 +13,7 @@ import '../../../core/formatters.dart';
 import '../../../core/money.dart';
 import '../../../domain/models/models.dart';
 import '../../../state/providers.dart';
+import 'expense_form_screen.dart';
 
 /// Список трат: получатель, категория, дата, способ оплаты, сумма.
 class ExpensesScreen extends ConsumerWidget {
@@ -28,8 +29,8 @@ class ExpensesScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         appBar: const AuroraAppBar(headerText: 'Траты'),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Добавление траты появится в М5.2')),
+          onPressed: () => Navigator.of(context).push(
+            AuroraPageRoute<void>(builder: (_) => const ExpenseFormScreen()),
           ),
           child: const Icon(Icons.add),
         ),
