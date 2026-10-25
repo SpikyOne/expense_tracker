@@ -5,7 +5,7 @@
 // Ключевые решения (закреплены на этапе 2):
 //   * чистый пакет sqlite3 (FFI) + системная libsqlite3.so.0 из состава
 //     ОС Аврора — без Drift и без path_provider;
-//   * путь к БД — по XDG-соглашению, чистым Dart;
+//   * путь к БД — каталог данных приложения по правилам песочницы (~/.local/share/$Org/$App)
 //   * версия схемы в PRAGMA user_version; миграции — цепочкой
 //     _migrateV N() от версии файла к актуальной;
 //   * сид: 8 стандартных категорий из ТЗ + служебная «Без категории» -
@@ -35,8 +35,13 @@ void configureSqliteForAurora() {
 ///
 /// Живёт в слое data; наружу отдаёт типы домена (Category, Expense).
 class DatabaseService {
-  /// Идентификатор приложения — часть пути к каталогу данных.
-  static const appId = 'ru.grigorev.expense_tracker';
+  /// Организация и приложение — ровно как в .desktop ([X-Application]).
+  /// Из них песочница строит каталоги, принадлежащие приложению.
+  static const orgName = 'ru.grigorev';
+  static const appName = 'expense_tracker';
+
+  /// Идентификатор приложения.
+  static const appId = '$orgName.$appName';
 
   /// Актуальная версия схемы. При изменении схемы добавляем метод
   /// миграции _migrateV2(), _migrateV3() и инкрементируем это число.
@@ -79,6 +84,9 @@ class DatabaseService {
   factory DatabaseService.open([String? path]) {
     configureSqliteForAurora();
     final dbPath = path ?? defaultDatabasePath();
+    // Диагностика пути: разные способы запуска (тулчейн/лаунчер) могут
+    // давать разное окружение — путь в логе делает это видимым сразу.
+    stderr.writeln('[expense_tracker] БД: $dbPath');
     File(dbPath).parent.createSync(recursive: true);
     return DatabaseService._(sqlite3.open(dbPath), dbPath);
   }
@@ -89,12 +97,14 @@ class DatabaseService {
     return DatabaseService._(sqlite3.openInMemory(), ':memory:');
   }
 
-  /// Путь к БД по XDG-соглашению: $XDG_DATA_HOME, иначе ~/.local/share.
+  /// Путь к БД: каталог данных приложения по правилам песочницы Авроры —
+  /// ~/.local/share/$OrgName/$AppName (AppLocalDataLocation, доки
+  /// «Данные пользователя» 5.1.6). XDG_DATA_HOME сознательно не читаем:
+  /// песочница может подставить своё значение, и файл уйдёт мимо
+  /// разрешённого каталога.
   static String defaultDatabasePath() {
-    final xdg = Platform.environment['XDG_DATA_HOME'];
     final home = Platform.environment['HOME'] ?? '/';
-    final dataHome = (xdg == null || xdg.isEmpty) ? '$home/.local/share' : xdg;
-    return '$dataHome/$appId/expenses.db';
+    return '$home/.local/share/$orgName/$appName/expenses.db';
   }
 
   /// Версия схемы, записанная в файле БД.
