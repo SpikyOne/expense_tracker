@@ -172,6 +172,31 @@ Future<void> main() async {
     expenses.length,
   );
 
+  // ---------- поиск по получателю и комментарию ----------
+  container.read(expenseFilterProvider.notifier).setSearch('КОФЕ');
+  container.invalidate(filteredExpensesProvider);
+  check(
+    'поиск без учёта регистра находит по комментарию',
+    (await container.read(filteredExpensesProvider.future)).length,
+    expenses.length,
+  );
+
+  container.read(expenseFilterProvider.notifier).setPayment(PaymentMethod.cash);
+  container.invalidate(filteredExpensesProvider);
+  check(
+    'поиск + чужой способ оплаты = пусто (комбинация AND)',
+    (await container.read(filteredExpensesProvider.future)).isEmpty,
+    true,
+  );
+
+  container.read(expenseFilterProvider.notifier).reset();
+  container.invalidate(filteredExpensesProvider);
+  check(
+    'после сброса снова полный список (М6.2)',
+    (await container.read(filteredExpensesProvider.future)).length,
+    expenses.length,
+  );
+
   // ---------- Пользовательская категория ----------
   final newCategoryId = container.read(categoryRepositoryProvider).insert('Питание в дороге');
   check('insert категории через репозиторий: id > 0', newCategoryId > 0, true);

@@ -1,15 +1,17 @@
 // Copyright (c) 2026, Григорьев Серафим. BSD-3-Clause License. См. LICENSE.
 //
-// Экран "Траты": список + панель фильтров (М6.1).
+// Экран "Траты": список + панель фильтров и поиска (М6.1, М6.2).
 //
 // Данные: filteredExpensesProvider — FutureProvider поверх репозитория,
-// читает expenseFilterProvider. Панель фильтров инлайновая, под аппбаром:
+// читает expenseFilterProvider. Панель инлайновая, под аппбаром:
 // AuroraApp не даёт MaterialLocalizations, поэтому никаких
 // showModalBottomSheet/showDatePicker — период вводится текстом
-// ГГГГ-ММ-ДД, как в форме траты.
+// ГГГГ-ММ-ДД, поиск — текстовое поле с debounce 300 мс.
 //
 // Панель живёт ВНЕ .when списка: переключение чипов перезагружает
 // FutureProvider, и панель не должна мигать вместе со списком.
+
+import 'dart:async';
 
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
@@ -18,10 +20,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/formatters.dart';
 import '../../../core/money.dart';
 import '../../../domain/models/models.dart';
+import '../../../state/expense_filter.dart';
 import '../../../state/providers.dart';
 import 'expense_form_screen.dart';
 
-/// Список трат с фильтрами: получатель, категория, дата, оплата, сумма.
+/// Список трат с фильтрами и поиском.
 class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
 
@@ -69,8 +72,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             if (_filtersExpanded) const _FilterPanel(),
             Expanded(
               child: expensesAsync.when(
-                // Чипы перезагружают список: держим прежние данные,
-                // чтобы список не мигал спиннером на каждый тап.
+                // Чипы/поиск перезагружают список: держим прежние данные,
+                // чтобы список не мигал спиннером на каждый ввод.
                 skipLoadingOnReload: true,
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(
@@ -96,7 +99,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Ничего не найдено по фильтрам.',
+                              'Ничего не найдено по фильтрам и поиску.',
                               style: theme.textThemeData.regularMedium,
                             ),
                             const SizedBox(height: 16),
@@ -174,10 +177,10 @@ class _ExpenseTile extends StatelessWidget {
   }
 }
 
-/// Панель фильтров: период, категория, способ оплаты + сброс.
+/// Панель фильтров: поиск, период, категория, способ оплаты + сброс.
 ///
 /// Отдельный ConsumerStatefulWidget и живёт в дереве только когда
-/// раскрыт: контроллеры дат создаются заново при каждом открытии —
+/// раскрыт: контроллеры создаются заново при каждом открытии —
 /// синхронизация с провайдером получается бесплатно.
 class _FilterPanel extends ConsumerStatefulWidget {
   const _FilterPanel();
@@ -190,19 +193,28 @@ class _FilterPanelState extends ConsumerState<_FilterPanel> {
   /// Формат даты тот же, что в форме траты: строго ГГГГ-ММ-ДД.
   static final RegExp _dateRegExp = RegExp(r'^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
 
+  /// Задержка применения поиска: запрос уходит через 300 мс после
+  /// последнего символа, а не на каждый keystroke.
+  static const Duration _searchDebounceDelay = Duration(milliseconds: 300);
+
+  late final TextEditingController _searchController;
   late final TextEditingController _fromController;
   late final TextEditingController _toController;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
     final filter = ref.read(expenseFilterProvider);
+    _searchController = TextEditingController(text: filter.searchText ?? '');
     _fromController = TextEditingController(text: filter.fromDateIso ?? '');
     _toController = TextEditingController(text: filter.toDateIso ?? '');
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
     _fromController.dispose();
     _toController.dispose();
     super.dispose();
@@ -243,8 +255,38 @@ class _FilterPanelState extends ConsumerState<_FilterPanel> {
     }
   }
 
+  /// Поиск применяется с задержкой: пока пользователь печатает, SQL
+  /// не дёргается. Если панель закрыли до срабатывания таймера —
+  /// применять уже некому (mounted false).
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(_searchDebounceDelay, () {
+      if (!mounted) {
+        return;
+      }
+      ref.read(expenseFilterProvider.notifier).setSearch(value);
+    });
+  }
+
+  /// Крестик — очистка без ожидания debounce.
+  void _clearSearch() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    ref.read(expenseFilterProvider.notifier).setSearch(null);
+  }
+
+  /// Подгоняет поле ввода под внешнее значение провайдера (или пусто).
+  void _syncController(TextEditingController controller, String? value) {
+    final text = value ?? '';
+    if (controller.text != text) {
+      controller.text = text;
+    }
+  }
+
   void _reset() {
+    _searchDebounce?.cancel();
     ref.read(expenseFilterProvider.notifier).reset();
+    _searchController.clear();
     _fromController.clear();
     _toController.clear();
   }
@@ -255,11 +297,51 @@ class _FilterPanelState extends ConsumerState<_FilterPanel> {
     final filter = ref.watch(expenseFilterProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
 
+    // Внешние изменения фильтра (например, «Сбросить фильтры» на
+    // пустом состоянии) синхронизируем в поля ввода; сброс поиска
+    // гасит отложенный таймер, чтобы он не вернул стёртый текст.
+    ref.listen<ExpenseFilter>(expenseFilterProvider, (previous, next) {
+      if (next.searchText == null) {
+        _searchDebounce?.cancel();
+      }
+      _syncController(_searchController, next.searchText);
+      _syncController(_fromController, next.fromDateIso);
+      _syncController(_toController, next.toDateIso);
+    });
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          TextFormField(
+            controller: _searchController,
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              labelText: 'Поиск: получатель, комментарий',
+              hintText: 'например: кофе',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _searchController,
+                builder: (context, value, _) => value.text.isEmpty
+                    ? const SizedBox.shrink()
+                    : IconButton(
+                        onPressed: _clearSearch,
+                        icon: const Icon(Icons.clear),
+                      ),
+              ),
+            ),
+            onChanged: _onSearchChanged,
+            onFieldSubmitted: (value) {
+              // «Готово»/лупа на клавиатуре — применить немедленно
+              // и убрать клавиатуру.
+              _searchDebounce?.cancel();
+              ref.read(expenseFilterProvider.notifier).setSearch(value);
+              FocusScope.of(context).unfocus();
+            },
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
