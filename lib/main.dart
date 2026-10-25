@@ -29,7 +29,16 @@ import 'presentation/screens/import_csv/import_csv_screen.dart';
 import 'presentation/screens/trips/trips_screen.dart';
 
 void main() {
-  runApp(const ProviderScope(child: ExpenseTrackerApp()));
+  // ScaffoldMessenger - хост для SnackBar. MaterialApp ставит его сам,
+  // но AuroraApp построен на WidgetsApp и не ставит: добавляем вручную
+  // один раз на уровне приложения, чтобы SnackBar работал на всех экранах.
+  runApp(
+    const ProviderScope(
+      child: ScaffoldMessenger(
+        child: ExpenseTrackerApp(),
+      ),
+    ),
+  );
 }
 
 /// Корневой виджет приложения.
