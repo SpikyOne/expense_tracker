@@ -105,6 +105,11 @@ class _ExpenseTile extends StatelessWidget {
       if (expense.isBusiness) 'служебная',
     ];
     return ListTile(
+      onTap: () => Navigator.of(context).push(
+        AuroraPageRoute<void>(
+          builder: (_) => ExpenseFormScreen(expenseId: expense.id),
+        ),
+      ),
       title: Text(
         expense.payee.isEmpty ? item.category.name : expense.payee,
         style: theme.textThemeData.regularMedium,

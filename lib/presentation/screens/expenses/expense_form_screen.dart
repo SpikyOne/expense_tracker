@@ -1,14 +1,22 @@
 // Copyright (c) 2026, Григорьев Серафим. BSD-3-Clause License. См. LICENSE.
 //
-// Форма добавления траты.
+// Форма добавления И правки траты (М5.3).
 //
-// Поля: сумма (копейки через parseMoneyInput), дата (ISO ГГГГ-ММ-ДД),
-// категория и способ оплаты (чипы — без MaterialLocalizations, которых
-// AuroraApp не даёт), получатель, комментарий, признак служебной.
-// Поле "командировка" появится позднее, пока tripId = null.
+// Два режима одного экрана:
+//   * expenseId == null — «Новая трата»: пустая форма, дата = сегодня,
+//     сохранение через insert;
+//   * expenseId != null — «Правка траты»: поля предзаполняются через
+//     ExpenseRepository.getById, сохранение через update (copyWith
+//     переносит id и tripId — привязка к командировке не потеряется),
+//     доступно удаление с инлайн-подтверждением.
 //
-// Контракт мутации: insert через репозиторий -> ref.invalidate(expensesProvider)
-// -> список на экране трат перечитается сам. Форма не знает про SQLite.
+// Почему подтверждение не showDialog: AuroraApp построен на WidgetsApp
+// и не даёт MaterialLocalizations, а showDialog требует их для
+// barrierLabel — упадёт в рантайме. Подтверждение инлайновое.
+//
+// Контракт мутаций: insert/update/delete через репозиторий ->
+// ref.invalidate(expensesProvider) -> экран трат перечитает список сам.
+// Форма не знает про SQLite.
 
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
@@ -18,9 +26,12 @@ import '../../../core/money.dart';
 import '../../../domain/models/models.dart';
 import '../../../state/providers.dart';
 
-/// Экран формы «Новая трата».
+/// Экран формы «Новая трата» / «Правка траты».
 class ExpenseFormScreen extends ConsumerStatefulWidget {
-  const ExpenseFormScreen({super.key});
+  const ExpenseFormScreen({super.key, this.expenseId});
+
+  /// id траты для правки; null — режим добавления.
+  final int? expenseId;
 
   @override
   ConsumerState<ExpenseFormScreen> createState() => _ExpenseFormScreenState();
@@ -41,14 +52,51 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   PaymentMethod _paymentMethod = PaymentMethod.card;
   bool _isBusiness = false;
 
+  /// Исходная трата в режиме правки; null — режим добавления.
+  Expense? _original;
+
+  /// getById не нашёл трату (уже удалена) — рисуем заглушку.
+  bool _notFound = false;
+
+  /// true — вместо кнопки «Удалить» показываем подтверждение.
+  bool _confirmDelete = false;
+
   /// "2026-10-24" из DateTime — без intl, руками.
   static String _isoDate(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  /// Копейки -> «199,99» для поля ввода (обратный parseMoneyInput).
+  static String _kopecksToInput(int kopecks) {
+    final rubles = kopecks ~/ 100;
+    final remainder = kopecks % 100;
+    return '$rubles,${remainder.toString().padLeft(2, '0')}';
+  }
+
   @override
   void initState() {
     super.initState();
-    _dateController.text = _isoDate(DateTime.now());
+    final id = widget.expenseId;
+    if (id == null) {
+      // Режим добавления: дата по умолчанию — сегодня.
+      _dateController.text = _isoDate(DateTime.now());
+      return;
+    }
+    // Режим правки: getById синхронный (одна строка по ключу), поэтому
+    // предзаполняем форму прямо в initState — без спиннера и family-провайдера.
+    final item = ref.read(expenseRepositoryProvider).getById(id);
+    if (item == null) {
+      _notFound = true;
+      return;
+    }
+    final expense = item.expense;
+    _original = expense;
+    _amountController.text = _kopecksToInput(expense.amountKopecks);
+    _dateController.text = expense.dateIso;
+    _payeeController.text = expense.payee;
+    _commentController.text = expense.comment;
+    _categoryId = expense.categoryId;
+    _paymentMethod = expense.paymentMethod;
+    _isBusiness = expense.isBusiness;
   }
 
   @override
@@ -81,22 +129,40 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       return;
     }
     final amountKopecks = parseMoneyInput(_amountController.text);
-    final categoryId = _categoryId ?? (categories.isEmpty ? null : categories.first.id);
+    // В правке _categoryId уже заполнен из БД; фолбэк нужен только добавлению.
+    final categoryId = _categoryId ??
+        (_original?.categoryId ?? (categories.isEmpty ? null : categories.first.id));
     if (amountKopecks == null || categoryId == null) {
       return; // сумму не пропустит валидатор; без категорий сохранять нечего
     }
 
     try {
-      final expense = Expense(
-        amountKopecks: amountKopecks,
-        dateIso: _dateController.text.trim(),
-        categoryId: categoryId,
-        payee: _payeeController.text.trim(),
-        paymentMethod: _paymentMethod,
-        comment: _commentController.text.trim(),
-        isBusiness: _isBusiness,
-      );
-      ref.read(expenseRepositoryProvider).insert(expense);
+      final original = _original;
+      if (original == null) {
+        final expense = Expense(
+          amountKopecks: amountKopecks,
+          dateIso: _dateController.text.trim(),
+          categoryId: categoryId,
+          payee: _payeeController.text.trim(),
+          paymentMethod: _paymentMethod,
+          comment: _commentController.text.trim(),
+          isBusiness: _isBusiness,
+        );
+        ref.read(expenseRepositoryProvider).insert(expense);
+      } else {
+        // copyWith переносит id и tripId: правка не отвяжет трату
+        // от командировки (М8) и не перепишет запись с нуля.
+        final expense = original.copyWith(
+          amountKopecks: amountKopecks,
+          dateIso: _dateController.text.trim(),
+          categoryId: categoryId,
+          payee: _payeeController.text.trim(),
+          paymentMethod: _paymentMethod,
+          comment: _commentController.text.trim(),
+          isBusiness: _isBusiness,
+        );
+        ref.read(expenseRepositoryProvider).update(expense);
+      }
       // Контракт мутации: экран трат перечитает список сам.
       ref.invalidate(expensesProvider);
       Navigator.of(context).pop();
@@ -107,15 +173,108 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
     }
   }
 
+  // ---------- удаление ----------
+
+  void _delete() {
+    final id = _original?.id;
+    if (id == null) {
+      return;
+    }
+    try {
+      ref.read(expenseRepositoryProvider).delete(id);
+      // Список перечитается; чеки SQLite чистит каскадом.
+      ref.invalidate(expensesProvider);
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      setState(() => _confirmDelete = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось удалить трату: $e')),
+      );
+    }
+  }
+
+  /// Кнопка удаления + инлайн-подтверждение (вместо showDialog —
+  /// AuroraApp не даёт MaterialLocalizations, диалог упал бы).
+  List<Widget> _deleteSection() {
+    final errorColor = Theme.of(context).colorScheme.error;
+    return [
+      const SizedBox(height: 8),
+      if (!_confirmDelete)
+        TextButton.icon(
+          onPressed: () => setState(() => _confirmDelete = true),
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('Удалить трату'),
+          style: TextButton.styleFrom(foregroundColor: errorColor),
+        )
+      else
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Удалить эту трату? Вместе с ней удалятся её чеки.'),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => setState(() => _confirmDelete = false),
+                  child: const Text('Отмена'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _delete,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Удалить'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: errorColor,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = AuroraTheme.of(context);
+
+    // Трата исчезла между тапом и открытием формы (или удалена извне).
+    if (_notFound) {
+      return SafeArea(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: const AuroraAppBar(headerText: 'Трата'),
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Трата не найдена — возможно, она уже удалена.',
+                  style: theme.textThemeData.regularMedium,
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Назад'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final isEditing = _original != null;
     final categoriesAsync = ref.watch(categoriesProvider);
 
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: const AuroraAppBar(headerText: 'Новая трата'),
+        appBar: AuroraAppBar(headerText: isEditing ? 'Правка траты' : 'Новая трата'),
         body: categoriesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Center(child: Text('Не удалось загрузить категории: $error')),
@@ -127,7 +286,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                 TextFormField(
                   controller: _amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  autofocus: true,
+                  autofocus: !isEditing,
                   decoration: const InputDecoration(labelText: 'Сумма, ₽', hintText: '199,99'),
                   validator: _validateAmount,
                 ),
@@ -196,8 +355,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                 FilledButton.icon(
                   onPressed: () => _save(categories),
                   icon: const Icon(Icons.check),
-                  label: const Text('Сохранить трату'),
+                  label: Text(isEditing ? 'Сохранить изменения' : 'Сохранить трату'),
                 ),
+                if (isEditing) ..._deleteSection(),
               ],
             ),
           ),
