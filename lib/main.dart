@@ -1,10 +1,14 @@
 // Copyright (c) 2026, Григорьев Серафим. BSD-3-Clause License. См. LICENSE.
 //
-// Стартовая точка приложения «Трекер расходов» для ОС Аврора.
+// Стартовая точка приложения «Трекер расходов» для ОС Авроры.
 //
 // Корень - AuroraApp из пакета aurora_controls: нативная тема и
 // окружение ОС Аврора вместо Material-скина. Обёртка ProviderScope
 // включает Riverpod — состояние приложения живёт через него.
+//
+// БД в main() не открывается (TODO М2.6 закрыт в М4.3): соединение
+// создаётся лениво провайдером databaseProvider из lib/state/providers.dart
+// при первом обращении к данным и закрывается вместе с контейнером.
 //
 // Слои проекта:
 //
@@ -18,7 +22,6 @@ import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'data/database/database_service.dart';
 import 'presentation/screens/categories/categories_screen.dart';
 import 'presentation/screens/dashboard/dashboard_screen.dart';
 import 'presentation/screens/expenses/expenses_screen.dart';
@@ -26,15 +29,6 @@ import 'presentation/screens/import_csv/import_csv_screen.dart';
 import 'presentation/screens/trips/trips_screen.dart';
 
 void main() {
-  
-  // TODO(М2.6): убрать временную проверку — соединение БД переедет в
-  // Riverpod-провайдеры. Пока так убеждаемся, что на устройстве создаются
-  // каталог и файл, применяется схема и отрабатывает сид.
-  final db = DatabaseService.open();
-  debugPrint('БД: ${db.path} (схема v${db.currentSchemaVersion})');
-  debugPrint('Категорий после сида: ${db.getCategories().length}');
-  db.close();
-
   runApp(const ProviderScope(child: ExpenseTrackerApp()));
 }
 
