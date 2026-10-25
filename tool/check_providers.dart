@@ -19,6 +19,7 @@ import 'dart:io';
 import 'package:expense_tracker/data/database/database_service.dart';
 import 'package:expense_tracker/domain/models/models.dart';
 import 'package:expense_tracker/state/providers.dart';
+import 'package:expense_tracker/state/expense_filter.dart';
 import 'package:riverpod/riverpod.dart';
 
 int _passed = 0;
@@ -123,6 +124,53 @@ Future<void> main() async {
   check('expensesProvider: трата видна', expenses.length, 1);
   check('expensesProvider: JOIN принёс категорию', expenses.first.category.name, 'Продукты');
   check('expensesProvider: привязка к поездке на месте', expenses.first.expense.tripId, tripId);
+
+  // ---------- М6.1: фильтры трат ----------
+  container.listen(expenseFilterProvider, (_, _) {});
+  container.listen(filteredExpensesProvider, (_, _) {});
+
+  check(
+    'фильтр по умолчанию пуст',
+    container.read(expenseFilterProvider),
+    const ExpenseFilter(),
+  );
+
+  container.invalidate(filteredExpensesProvider);
+  check(
+    'filteredExpensesProvider без фильтров = полный список',
+    (await container.read(filteredExpensesProvider.future)).length,
+    expenses.length,
+  );
+
+  container.read(expenseFilterProvider.notifier).setCategory(products.id!);
+  container.invalidate(filteredExpensesProvider);
+  final filteredByCategory = await container.read(filteredExpensesProvider.future);
+  check(
+    'фильтр по категории: все строки нужной категории',
+    filteredByCategory.every((item) => item.category.id == products.id),
+    true,
+  );
+  check(
+    'бейдж: активна 1 группа фильтров',
+    container.read(expenseFilterProvider).activeCount,
+    1,
+  );
+
+  container.read(expenseFilterProvider.notifier).setFrom('2030-01-01');
+  container.invalidate(filteredExpensesProvider);
+  check(
+    'период в будущем даёт пустой список',
+    (await container.read(filteredExpensesProvider.future)).isEmpty,
+    true,
+  );
+
+  container.read(expenseFilterProvider.notifier).reset();
+  container.invalidate(filteredExpensesProvider);
+  check(
+    'сброс вернул полный список',
+    (await container.read(filteredExpensesProvider.future)).length,
+    expenses.length,
+  );
 
   // ---------- Пользовательская категория ----------
   final newCategoryId = container.read(categoryRepositoryProvider).insert('Питание в дороге');

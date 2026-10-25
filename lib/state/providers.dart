@@ -22,6 +22,8 @@ import 'package:expense_tracker/domain/models/models.dart';
 import 'package:expense_tracker/domain/repositories/repositories.dart';
 import 'package:riverpod/riverpod.dart';
 
+import 'expense_filter.dart';
+
 // ---------- База данных ----------
 
 /// Путь к файлу БД; null — стандартный XDG-путь приложения.
@@ -74,6 +76,45 @@ final expenseRepositoryProvider = Provider<ExpenseRepository>(
   (ref) => ExpenseRepositoryImpl(ref.watch(databaseProvider)),
 );
 
+// ---------- Фильтры трат (М6.1) ----------
+
+/// Активный фильтр экрана трат. Не знает ни про UI, ни про SQL:
+/// доменные параметры, пробрасываемые в ExpenseRepository.query.
+///
+/// Riverpod 3: вместо legacy StateProvider — NotifierProvider, мутации
+/// инкапсулированы методами, UI не собирает copyWith сам.
+final expenseFilterProvider = NotifierProvider<ExpenseFilterNotifier, ExpenseFilter>(
+  ExpenseFilterNotifier.new,
+);
+
+/// Состояние и мутации фильтра трат.
+class ExpenseFilterNotifier extends Notifier<ExpenseFilter> {
+  @override
+  ExpenseFilter build() => const ExpenseFilter();
+
+  /// null снимает границу периода.
+  void setFrom(String? dateIso) =>
+      state = state.copyWith(fromDateIso: dateIso, clearFrom: dateIso == null);
+
+  /// null снимает границу периода.
+  void setTo(String? dateIso) =>
+      state = state.copyWith(toDateIso: dateIso, clearTo: dateIso == null);
+
+  /// null = «все категории».
+  void setCategory(int? id) =>
+      state = state.copyWith(categoryId: id, clearCategory: id == null);
+
+  /// null = «все способы оплаты».
+  void setPayment(PaymentMethod? method) =>
+      state = state.copyWith(paymentMethod: method, clearPayment: method == null);
+
+  /// М6.2: UI поиска появится позже — провайдер готов уже сейчас.
+  void setSearch(String? text) => state = state.copyWith(
+      searchText: text, clearSearch: text == null || text.trim().isEmpty);
+
+  void reset() => state = const ExpenseFilter();
+}
+
 // ---------- Списки для экранов ----------
 
 /// Категории в порядке DAO: стандартные, затем пользовательские.
@@ -92,3 +133,18 @@ final tripsProvider = FutureProvider<List<Trip>>(
 final expensesProvider = FutureProvider<List<ExpenseWithCategory>>(
   (ref) => ref.watch(expenseRepositoryProvider).query(),
 );
+
+/// Траты с учётом expenseFilterProvider: параметры пробрасываются в
+/// ExpenseDao.query (все фильтры и поиск уже реализованы в DAO).
+/// Полный список по-прежнему в expensesProvider — дашборду фильтры
+/// не нужны (пригодится в М11).
+final filteredExpensesProvider = FutureProvider<List<ExpenseWithCategory>>((ref) {
+  final filter = ref.watch(expenseFilterProvider);
+  return ref.watch(expenseRepositoryProvider).query(
+    fromDateIso: filter.fromDateIso,
+    toDateIso: filter.toDateIso,
+    categoryId: filter.categoryId,
+    paymentMethod: filter.paymentMethod,
+    searchText: filter.searchText,
+  );
+});

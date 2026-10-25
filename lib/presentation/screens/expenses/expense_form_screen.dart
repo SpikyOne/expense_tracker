@@ -15,8 +15,8 @@
 // barrierLabel — упадёт в рантайме. Подтверждение инлайновое.
 //
 // Контракт мутаций: insert/update/delete через репозиторий ->
-// ref.invalidate(expensesProvider) -> экран трат перечитает список сам.
-// Форма не знает про SQLite.
+// ref.invalidate(expensesProvider + filteredExpensesProvider) ->
+// экраны перечитают списки сами. Форма не знает про SQLite.
 
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
@@ -165,6 +165,8 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       }
       // Контракт мутации: экран трат перечитает список сам.
       ref.invalidate(expensesProvider);
+      // Фильтрованный список экрана трат перечитается тоже.
+      ref.invalidate(filteredExpensesProvider);
       Navigator.of(context).pop();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -184,6 +186,8 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       ref.read(expenseRepositoryProvider).delete(id);
       // Список перечитается; чеки SQLite чистит каскадом.
       ref.invalidate(expensesProvider);
+      // Фильтрованный список экрана трат перечитается тоже.
+      ref.invalidate(filteredExpensesProvider);
       if (mounted) {
         Navigator.of(context).pop();
       }
