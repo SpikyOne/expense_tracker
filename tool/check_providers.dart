@@ -21,6 +21,8 @@ import 'package:expense_tracker/domain/models/models.dart';
 import 'package:expense_tracker/state/providers.dart';
 import 'package:expense_tracker/state/expense_filter.dart';
 import 'package:riverpod/riverpod.dart';
+import 'package:sqlite3/sqlite3.dart';
+
 
 int _passed = 0;
 int _failed = 0;
@@ -205,6 +207,33 @@ Future<void> main() async {
   check(
     'новая категория видна после invalidate',
     categoriesAfter.any((c) => c.id == newCategoryId),
+    true,
+  );
+
+  // ---------- контракт добавления своей категории ----------
+  // Точный дубликат отклоняет UNIQUE уже на уровне репозитория;
+  // UI дополнительно страхуется проверкой по списку (без регистра).
+  var duplicateRejected = false;
+  try {
+    container.read(categoryRepositoryProvider).insert('Питание в дороге');
+  } on SqliteException {
+    duplicateRejected = true;
+  }
+  check('М7.1: дубликат имени отклонён UNIQUE', duplicateRejected, true);
+
+  // Пробелы обрезаются сквозь граф провайдеров; категория — своя.
+  final gymId = container.read(categoryRepositoryProvider).insert('  Моя Аптека  ');
+  container.invalidate(categoriesProvider);
+  final allAfterInsert = await container.read(categoriesProvider.future);
+  final gym = allAfterInsert.firstWhere((c) => c.id == gymId);
+  check('М7.1: имя обрезано от пробелов', gym.name, 'Моя Аптека');
+  check('М7.1: своя категория не стандартная', gym.isDefault, false);
+
+  // Порядок DAO: все пользовательские — после всех стандартных.
+  check(
+    'М7.1: свои категории идут после стандартных',
+    allAfterInsert.indexWhere((c) => !c.isDefault) >
+        allAfterInsert.lastIndexWhere((c) => c.isDefault),
     true,
   );
 
