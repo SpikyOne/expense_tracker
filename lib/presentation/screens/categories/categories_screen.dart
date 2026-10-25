@@ -3,12 +3,13 @@
 // Экран "Категории" - живой список из categoriesProvider.
 //
 // Стандартные категории (isDefault) показываются с пометкой и без
-// действий: защита лежит в DAO (М3.2), UI просто не предлагает правок.
-// Свои категории пока тоже без действий — переименование и удаление
-// появятся в М7.2.
+// действий: их защита лежит в DAO, UI просто не предлагает правок.
+// Свои категории: тап открывает форму в режиме переименования, там же
+// удаление с инлайн-подтверждением.
 //
-// Контракт мутации: форма добавления делает insert +
-// ref.invalidate(categoriesProvider) — экран перечитает список сам.
+// Контракт мутации: форма делает insert/rename/delete + invalidate
+// (categoriesProvider, expensesProvider, filteredExpensesProvider) —
+// экран и списки трат перечитываются сами.
 
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +19,7 @@ import '../../../domain/models/models.dart';
 import '../../../state/providers.dart';
 import 'category_form_screen.dart';
 
-/// Список категорий: стандартные с пометкой, затем свои.
+/// Список категорий: стандартные с пометкой, затем свои с правкой.
 class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
 
@@ -85,7 +86,7 @@ class CategoriesScreen extends ConsumerWidget {
   }
 }
 
-/// Строка списка: название + пометка «стандартная» у защищённых.
+/// Строка списка: у стандартных — пометка, у своих — тап к правке.
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({required this.category});
 
@@ -94,9 +95,18 @@ class _CategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = AuroraTheme.of(context);
+    final isStandard = category.isDefault;
     return ListTile(
       title: Text(category.name, style: theme.textThemeData.regularMedium),
-      trailing: category.isDefault
+      subtitle: isStandard ? null : const Text('своя — нажмите для правки'),
+      onTap: isStandard
+          ? null
+          : () => Navigator.of(context).push(
+                AuroraPageRoute<void>(
+                  builder: (_) => CategoryFormScreen(category: category),
+                ),
+              ),
+      trailing: isStandard
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
@@ -105,7 +115,7 @@ class _CategoryTile extends StatelessWidget {
               ),
               child: Text('стандартная', style: theme.textThemeData.regularMedium),
             )
-          : null,
+          : const Icon(Icons.chevron_right),
     );
   }
 }

@@ -1,16 +1,19 @@
 // Copyright (c) 2026, Григорьев Серафим. BSD-3-Clause License. См. LICENSE.
 //
-// Форма добавления своей категории - одно поле.
+// Форма категории, два режима (как форма траты через expenseId):
+//   * category == null  — добавление (insert);
+//   * category != null  — переименование (rename) + удаление с
+//     инлайн-подтверждением (showDialog недоступен: AuroraApp не даёт
+//     MaterialLocalizations).
 //
-// Правила (М7.1):
-//   * непусто после обрезки пробелов (DAO пере-проверит и бросит
-//     ArgumentError, но UI не пускает пустые заранее);
-//   * без дублей: проверка по списку categoriesProvider без учёта
-//     регистра; точный дубликат дополнительно ловит UNIQUE в БД.
+// Правила имени: непусто после обрезки пробелов; без дублей — проверка
+// по списку categoriesProvider без учёта регистра, сама категория
+// исключается (иначе «Кафе» не сохранится со своим же именем). Точный
+// дубликат дополнительно ловит UNIQUE в БД.
 //
-// Контракт мутации: insert через репозиторий ->
-// ref.invalidate(categoriesProvider) -> все потребители категорий
-// (экран списка, чипы фильтров, чипы формы траты) перечитаются сами.
+// Контракт мутации: rename/delete меняют имя/привязку категории, а JOIN
+// трат несёт это имя — поэтому инвалидируем categoriesProvider вместе
+// с expensesProvider и filteredExpensesProvider.
 
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
@@ -19,9 +22,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/models.dart';
 import '../../../state/providers.dart';
 
-/// Экран формы «Новая категория».
+/// Экран формы «Новая категория» / «Переименовать категорию».
 class CategoryFormScreen extends ConsumerStatefulWidget {
-  const CategoryFormScreen({super.key});
+  const CategoryFormScreen({super.key, this.category});
+
+  /// Не null — режим переименования этой категории.
+  final Category? category;
 
   @override
   ConsumerState<CategoryFormScreen> createState() => _CategoryFormScreenState();
@@ -31,6 +37,18 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
 
+  /// Шаг 1 инлайн-подтверждения удаления (шаг 2 — кнопка «Удалить»).
+  bool _confirmDelete = false;
+
+  bool get _isRename => widget.category != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefill в режиме переименования — по образцу формы траты.
+    _nameController.text = widget.category?.name ?? '';
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -39,22 +57,33 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
 
   // ---------- валидация ----------
 
-  /// Непусто и не дубликат (без учёта регистра). Список существующих
-  /// передаём при построении формы — валидатор всегда сверяется с
-  /// актуальными данными провайдера.
   String? _validateName(String? value, List<Category> existing) {
     final text = (value ?? '').trim();
     if (text.isEmpty) {
       return 'Введите название';
     }
     final lower = text.toLowerCase();
-    if (existing.any((c) => c.name.toLowerCase() == lower)) {
+    // Свою категорию исключаем: переименование в своё же имя законно.
+    final excludeId = widget.category?.id;
+    final duplicate = existing
+        .any((c) => c.id != excludeId && c.name.toLowerCase() == lower);
+    if (duplicate) {
       return 'Такая категория уже есть';
     }
     return null;
   }
 
-  // ---------- сохранение ----------
+  // ---------- мутации ----------
+
+  /// Общий хвост insert/rename/delete: обновляем все зависимые списки
+  /// и возвращаемся назад.
+  void _finishAndPop() {
+    ref.invalidate(categoriesProvider);
+    // JOIN трат несёт имя категории — списки трат тоже устарели.
+    ref.invalidate(expensesProvider);
+    ref.invalidate(filteredExpensesProvider);
+    Navigator.of(context).pop();
+  }
 
   void _save(List<Category> existing) {
     final form = _formKey.currentState;
@@ -63,27 +92,50 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
     }
     // Гасим клавиатуру до вставки: поп анимируется без её схлопывания.
     FocusScope.of(context).unfocus();
+    final category = widget.category;
     try {
-      // Валидатор гарантирует непустоту; DAO ещё раз обрежет пробелы.
-      ref.read(categoryRepositoryProvider).insert(_nameController.text);
-      // Контракт мутации: потребители категорий перечитают список сами.
-      ref.invalidate(categoriesProvider);
-      Navigator.of(context).pop();
+      final repository = ref.read(categoryRepositoryProvider);
+      if (category == null) {
+        repository.insert(_nameController.text);
+      } else {
+        // Категория пришла из БД — id гарантированно не null.
+        repository.rename(category.id!, _nameController.text);
+      }
+      _finishAndPop();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось добавить категорию: $e')),
+        SnackBar(content: Text('Не удалось сохранить категорию: $e')),
+      );
+    }
+  }
+
+  void _delete() {
+    final id = widget.category?.id;
+    if (id == null) {
+      return;
+    }
+    try {
+      // DAO сам переносит траты категории в «Без категории».
+      ref.read(categoryRepositoryProvider).delete(id);
+      _finishAndPop();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось удалить категорию: $e')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = AuroraTheme.of(context);
     final categoriesAsync = ref.watch(categoriesProvider);
 
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: const AuroraAppBar(headerText: 'Новая категория'),
+        appBar: AuroraAppBar(
+          headerText: _isRename ? 'Переименовать категорию' : 'Новая категория',
+        ),
         body: categoriesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) =>
@@ -98,9 +150,9 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
                   autofocus: true,
                   textCapitalization: TextCapitalization.sentences,
                   textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Название',
-                    hintText: 'Например, Спортзал',
+                    hintText: _isRename ? null : 'Например, Спортзал',
                   ),
                   validator: (value) => _validateName(value, categories),
                   // У TextFormField именно onFieldSubmitted (урок М6.2).
@@ -110,8 +162,51 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
                 FilledButton.icon(
                   onPressed: () => _save(categories),
                   icon: const Icon(Icons.check),
-                  label: const Text('Добавить категорию'),
+                  label: Text(_isRename ? 'Сохранить' : 'Добавить категорию'),
                 ),
+
+                // Удаление — только в режиме переименования. Стандартные
+                // сюда не попадают: у их строк в списке onTap нет.
+                if (_isRename) ...[
+                  const SizedBox(height: 24),
+                  if (!_confirmDelete)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
+                        ),
+                        onPressed: () => setState(() => _confirmDelete = true),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Удалить категорию'),
+                      ),
+                    )
+                  else ...[
+                    Text(
+                      'Удалить «${widget.category!.name}»? '
+                      'Её траты переедут в «Без категории».',
+                      style: theme.textThemeData.regularMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                          ),
+                          onPressed: _delete,
+                          child: const Text('Удалить'),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed: () =>
+                              setState(() => _confirmDelete = false),
+                          child: const Text('Отмена'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ],
             ),
           ),

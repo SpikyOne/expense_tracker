@@ -219,15 +219,15 @@ Future<void> main() async {
   } on SqliteException {
     duplicateRejected = true;
   }
-  check('М7.1: дубликат имени отклонён UNIQUE', duplicateRejected, true);
+  check('Дубликат имени отклонён UNIQUE', duplicateRejected, true);
 
   // Пробелы обрезаются сквозь граф провайдеров; категория — своя.
   final gymId = container.read(categoryRepositoryProvider).insert('  Моя Аптека  ');
   container.invalidate(categoriesProvider);
   final allAfterInsert = await container.read(categoriesProvider.future);
   final gym = allAfterInsert.firstWhere((c) => c.id == gymId);
-  check('М7.1: имя обрезано от пробелов', gym.name, 'Моя Аптека');
-  check('М7.1: своя категория не стандартная', gym.isDefault, false);
+  check('Имя обрезано от пробелов', gym.name, 'Моя Аптека');
+  check('Своя категория не стандартная', gym.isDefault, false);
 
   // Порядок DAO: все пользовательские — после всех стандартных.
   check(
@@ -236,6 +236,73 @@ Future<void> main() async {
         allAfterInsert.lastIndexWhere((c) => c.isDefault),
     true,
   );
+
+  // ---------- rename/delete через граф провайдеров ----------
+  // DAO-уровень уже покрыт check_dao.dart; здесь проверяем контракт
+  // экранов: что видно через провайдеры после invalidate.
+  final categoryRepo = container.read(categoryRepositoryProvider);
+
+  // Переименование: имя обрезается, список перечитывается.
+  categoryRepo.rename(gymId, '  Фитнес  ');
+  container.invalidate(categoriesProvider);
+  final afterRename = await container.read(categoriesProvider.future);
+  check(
+    'rename обрезал пробелы',
+    afterRename.firstWhere((c) => c.id == gymId).name,
+    'Фитнес',
+  );
+
+  // Стандартную категорию переименовывать нельзя — StateError из DAO.
+  var renameDefaultRejected = false;
+  try {
+    categoryRepo.rename(products.id!, 'Еда');
+  } on StateError {
+    renameDefaultRejected = true;
+  }
+  check('rename стандартной отклонён', renameDefaultRejected, true);
+
+  // Удаление: вешаем трату на «Фитнес» и удаляем категорию —
+  // траты обязаны переехать в «Без категории» и не потеряться.
+  final fitnessId = afterRename.firstWhere((c) => c.name == 'Фитнес').id!;
+  container.read(expenseRepositoryProvider).insert(
+    Expense(
+      amountKopecks: 150000,
+      dateIso: '2026-10-25',
+      categoryId: fitnessId,
+      payee: 'Фитнес-клуб',
+    ),
+  );
+
+  categoryRepo.delete(fitnessId);
+  container.invalidate(categoriesProvider);
+  container.invalidate(expensesProvider);
+  final afterDelete = await container.read(categoriesProvider.future);
+  check(
+    'Категория удалена из списка',
+    afterDelete.any((c) => c.id == fitnessId),
+    false,
+  );
+  check('Состав списка после удаления', afterDelete.length, 10);
+
+  final expensesAfterDelete = await container.read(expensesProvider.future);
+  check('Траты не потерялись', expensesAfterDelete.length, 2);
+  final moved = expensesAfterDelete.firstWhere(
+    (e) => e.expense.payee == 'Фитнес-клуб',
+  );
+  check(
+    'Траты переехали в «Без категории»',
+    moved.category.name,
+    DatabaseService.uncategorizedName,
+  );
+
+  // Удалять стандартную нельзя — StateError из DAO.
+  var deleteDefaultRejected = false;
+  try {
+    categoryRepo.delete(products.id!);
+  } on StateError {
+    deleteDefaultRejected = true;
+  }
+  check('Delete стандартной отклонён', deleteDefaultRejected, true);
 
   // ---------- Утилизация контейнера закрывает БД ----------
     // Основной сценарий окончен. При overrideWithValue владение БД у
