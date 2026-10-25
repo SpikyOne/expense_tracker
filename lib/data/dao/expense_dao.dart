@@ -11,14 +11,6 @@
 import 'package:expense_tracker/data/database/database_service.dart';
 import 'package:expense_tracker/domain/models/models.dart';
 
-/// Трата вместе с её категорией — результат JOIN expenses/categories.
-class ExpenseWithCategory {
-  const ExpenseWithCategory({required this.expense, required this.category});
-
-  final Expense expense;
-  final Category category;
-}
-
 /// Операции с таблицей expenses.
 class ExpenseDao {
   ExpenseDao(this._db);
