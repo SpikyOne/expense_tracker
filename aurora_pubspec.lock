@@ -153,6 +153,15 @@ packages:
     source: hosted
     upstream_version_for_aurora: null
     version: "1.16.0"
+  cross_file:
+    dependency: transitive
+    description:
+      name: cross_file
+      sha256: f141ea4f277af142a0356955707f6556f37b03947d39d55585981a06ca437bd6
+      url: "https://pub.dev"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "0.3.5+5"
   crypto:
     dependency: transitive
     description:
@@ -162,6 +171,15 @@ packages:
     source: hosted
     upstream_version_for_aurora: null
     version: "3.0.8"
+  dbus:
+    dependency: transitive
+    description:
+      name: dbus
+      sha256: a48d5da28e89bd02196e80d81ed8d7954923d00a0f4a68cc20b575038f023383
+      url: "https://pub.dev"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "0.7.15"
   fake_async:
     dependency: transitive
     description:
@@ -396,6 +414,51 @@ packages:
     source: hosted
     upstream_version_for_aurora: null
     version: "1.9.1"
+  path_provider:
+    dependency: transitive
+    description:
+      name: path_provider
+      sha256: b7f0faf34666ecb0b5d1c38a86c84518f3f7eb821f95bb95fa3f3fd17dc25e49
+      url: "https://sdk-repo.omprussia.ru/sdk/flutter/pub/"
+    source: hosted
+    upstream_version_for_aurora: "2.1.5"
+    version: "2.1.5+7"
+  path_provider_aurora:
+    dependency: transitive
+    description:
+      name: path_provider_aurora
+      sha256: "02f2cae78f147cb25e569bb980a0d030577eb5adc70bde862b3f340cc20e25ad"
+      url: "https://sdk-repo.omprussia.ru/sdk/flutter/pub/"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "1.4.0"
+  path_provider_platform_interface:
+    dependency: transitive
+    description:
+      name: path_provider_platform_interface
+      sha256: "739106298e268c6ea9e525d4ed01db086ed90d4abc452543a8ebd6c0b5c2d393"
+      url: "https://sdk-repo.omprussia.ru/sdk/flutter/pub/"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "2.1.2"
+  petitparser:
+    dependency: transitive
+    description:
+      name: petitparser
+      sha256: "91bd59303e9f769f108f8df05e371341b15d59e995e6806aefab827b58336675"
+      url: "https://pub.dev"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "7.0.2"
+  platform:
+    dependency: transitive
+    description:
+      name: platform
+      sha256: "5d6b1b0036a5f331ebc77c850ebc8506cbc1e9416c27e59b439f917a902a4984"
+      url: "https://pub.dev"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "3.1.6"
   plugin_platform_interface:
     dependency: transitive
     description:
@@ -432,6 +495,33 @@ packages:
     source: hosted
     upstream_version_for_aurora: null
     version: "3.3.2"
+  share_plus:
+    dependency: "direct main"
+    description:
+      name: share_plus
+      sha256: c3e9d27a935ff9226330ef115605292068b636260f5c991c4360ee00f0df200c
+      url: "https://sdk-repo.omprussia.ru/sdk/flutter/pub/"
+    source: hosted
+    upstream_version_for_aurora: "12.0.2"
+    version: "12.0.2+2"
+  share_plus_aurora:
+    dependency: transitive
+    description:
+      name: share_plus_aurora
+      sha256: ea63cc28de2dbdc019d8516aada6192539ecbad3a560029c2ae1ff2589957f2d
+      url: "https://sdk-repo.omprussia.ru/sdk/flutter/pub/"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "1.3.0"
+  share_plus_platform_interface:
+    dependency: transitive
+    description:
+      name: share_plus_platform_interface
+      sha256: "42c7cd7a7fbcb565df8ecdc47840a26d1b4e71401efb5f3ae15b2db79ff84357"
+      url: "https://sdk-repo.omprussia.ru/sdk/flutter/pub/"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "6.0.0"
   shelf:
     dependency: transitive
     description:
@@ -663,6 +753,15 @@ packages:
     source: hosted
     upstream_version_for_aurora: null
     version: "1.2.1"
+  xml:
+    dependency: transitive
+    description:
+      name: xml
+      sha256: "67f0aff7be013d107995e9b75bf4e7f2c3ef2dfdb2c8e68024bba0a7fd5756a4"
+      url: "https://pub.dev"
+    source: hosted
+    upstream_version_for_aurora: null
+    version: "7.0.1"
   yaml:
     dependency: transitive
     description:

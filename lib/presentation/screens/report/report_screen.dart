@@ -19,6 +19,7 @@ import 'dart:io';
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../domain/models/models.dart';
 import '../../../domain/services/report_service.dart';
@@ -144,6 +145,29 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     }
   }
 
+  /// «Поделиться»: системный диалог Авроры. Отправляем готовый MD-текст
+  /// с текущим именем отчёта. Ошибка — текстом на экране, не падаем.
+  Future<void> _share() async {
+    final rows = ref.read(filteredExpensesProvider).value;
+    if (rows == null) {
+      setState(() => _status = 'Отчёт ещё не собран — дождись загрузки списка.');
+      return;
+    }
+    final receiptIds = ref.read(receiptExpenseIdsProvider).value ?? <int>{};
+    final categories = ref.read(categoriesProvider).value ?? const <Category>[];
+    final rawName = _nameController.text.trim();
+    final title = rawName.isEmpty ? 'Отчёт по тратам' : rawName;
+    final md = _buildMd(title: title, categories: categories, rows: rows, receiptIds: receiptIds);
+    try {
+      final result = await SharePlus.instance.share(ShareParams(text: md, subject: title));
+      if (!mounted) return;
+      setState(() => _status = 'Отправлено: ${result.status}');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _status = 'Ошибка отправки: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = AuroraTheme.of(context);
@@ -181,6 +205,15 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       onPressed: _saving ? null : _save,
                       icon: const Icon(Icons.save),
                       label: const Text('Сохранить отчёт'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: _share,
+                      icon: const Icon(Icons.share),
+                      label: const Text('Поделиться отчётом'),
                     ),
                   ),
                   if (_status != null) ...[

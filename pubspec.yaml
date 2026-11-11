@@ -26,6 +26,9 @@ dependencies:
   
   sqlite3: ^2.9.4
 
+  # Поделиться отчётом: интерфейс share_plus
+  share_plus: ^12.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -33,3 +36,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+dependency_overrides:
+  share_plus:
+    hosted:
+      url: https://sdk-repo.omprussia.ru/sdk/flutter/pub
+      name: share_plus
