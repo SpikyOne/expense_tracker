@@ -4,7 +4,7 @@
 //
 // Корень - AuroraApp из пакета aurora_controls: нативная тема и
 // окружение ОС Аврора вместо Material-скина. Обёртка ProviderScope
-// включает Riverpod — состояние приложения живёт через него.
+// включает Riverpod - состояние приложения живёт через него.
 //
 // БД в main() не открывается (TODO М2.6 закрыт в М4.3): соединение
 // создаётся лениво провайдером databaseProvider из lib/state/providers.dart
@@ -28,6 +28,10 @@ import 'presentation/screens/expenses/expenses_screen.dart';
 import 'presentation/screens/import_csv/import_csv_screen.dart';
 import 'presentation/screens/trips/trips_screen.dart';
 
+import 'core/pin_service.dart';
+import 'presentation/screens/pin/pin_screen.dart';
+import 'state/providers.dart' show databaseProvider;
+
 void main() {
   // ScaffoldMessenger - хост для SnackBar. MaterialApp ставит его сам,
   // но AuroraApp построен на WidgetsApp и не ставит: добавляем вручную
@@ -37,7 +41,7 @@ void main() {
 
 /// Корневой виджет приложения.
 ///
-/// AuroraApp — аврора-аналог MaterialApp: даёт нативный вид,
+/// AuroraApp - аврора-аналог MaterialApp: даёт нативный вид,
 /// поддержку атмосфер ОС и аврора-модель навигации.
 class ExpenseTrackerApp extends StatefulWidget {
   const ExpenseTrackerApp({super.key});
@@ -53,18 +57,28 @@ class _ExpenseTrackerAppState extends State<ExpenseTrackerApp> {
 
   @override
   Widget build(BuildContext context) {
-    return AuroraApp(navigatorKey: _navKey, themeMode: ThemeMode.dark, home: const HomePage());
+    // ТЗ финала: пин обязателен при любом варианте запуска.
+    // PinScreen сам решает, какой режим показать (создание или ввод).
+    return AuroraApp(navigatorKey: _navKey, themeMode: ThemeMode.dark, home: const PinScreen());
   }
 }
 
-/// Главный экран — корень навигационного стека.
+/// Главный экран - корень навигационного стека.
 ///
-/// Паттерн Авроры: на корневом экране нет AuroraAppBar — заголовок
+/// Паттерн Авроры: на корневом экране нет AuroraAppBar - заголовок
 /// оформляется AuroraPageHeader в теле. AuroraAppBar появится на
 /// внутренних страницах, куда ведёт AuroraPageRoute.
-class HomePage extends StatelessWidget {
+///
+/// Финал: кнопка сброса пина и данных - инлайн-подтверждение вторым
+/// нажатием (showDialog в AuroraApp недоступен, см. expense_form_screen).
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
+  @override
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
   static final Map<String, WidgetBuilder> _sections = {
     'Траты': (_) => const ExpensesScreen(),
     'Дашборд': (_) => const DashboardScreen(),
@@ -72,6 +86,8 @@ class HomePage extends StatelessWidget {
     'Командировки': (_) => const TripsScreen(),
     'Импорт CSV': (_) => const ImportCsvScreen(),
   };
+
+  bool _confirmReset = false;
 
   @override
   Widget build(BuildContext context) {
@@ -90,11 +106,41 @@ class HomePage extends StatelessWidget {
                     title: Text(entry.key, style: theme.textThemeData.regularMedium),
                     onTap: () => Navigator.of(context).push(AuroraPageRoute<void>(builder: entry.value)),
                   ),
+                const SizedBox(height: 24),
+                // ТЗ финала: возможность сбросить пин с очисткой данных.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: _onResetPressed,
+                      child: Text(_confirmReset ? 'Точно сбросить? Нажмите ещё раз' : 'Сбросить пин и данные'),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  void _onResetPressed() {
+    if (!_confirmReset) {
+      setState(() => _confirmReset = true);
+      return;
+    }
+    // 1. Закрываем БД (invalidate -> onDispose -> db.close()),
+    //    иначе файл expenses.db не удалится.
+    ref.invalidate(databaseProvider);
+    // 2. Удаляем весь каталог данных (БД, чеки, pin.json).
+    PinService.create().resetAll();
+    // 3. На экран создания нового пина, стек чист.
+    Navigator.of(context).pushAndRemoveUntil(
+      AuroraPageRoute<void>(builder: (_) => const PinScreen()),
+      (_) => false,
     );
   }
 }

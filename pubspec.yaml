@@ -29,6 +29,9 @@ dependencies:
   # Поделиться отчётом: интерфейс share_plus
   share_plus: ^12.0.2
 
+  # SHA-256 для хэша пин-кода. Pure-Dart
+  crypto: ^3.0.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
