@@ -3,6 +3,13 @@
 // Экран пин-кода: один экран на два режима - создание (первый запуск
 // или после сброса) и ввод. Работает без MaterialLocalizations
 // (AuroraApp построен на WidgetsApp): только инлайн-тексты и AuroraPageRoute.
+//
+// Финал (фикс багов): сброс (3 неверных ввода / кнопка на главном экране)
+// теперь (1) уведомляет через SnackBar (корневой ScaffoldMessenger уже
+// есть в main), (2) показывает промежуточный экран "Пин и данные
+// удалены", и только по кнопке - создание нового пина; (3) кружки
+// при этом пустые. Причина старого бага - resetAll падал молча на
+// занятом файле БД и обрывал _wipeAll до setState (см. PinService).
 
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +33,12 @@ class _PinScreenState extends ConsumerState<PinScreen> {
   String? _firstEntered; // первый ввод в режиме создания
   String? _error;
 
+  /// Промежуточное состояние после сброса: экран "данные удалены".
+  bool _wiped = false;
+
+  /// 'locked' - 3 неверных ввода; 'manual' - кнопка на главном экране.
+  String _wipeReason = 'manual';
+
   /// Режим - геттер: после сброса isPinSet == false, и экран сам
   /// перестраивается в "Создайте пин-код".
   bool get _isCreateMode => !_pin.isPinSet;
@@ -33,6 +46,7 @@ class _PinScreenState extends ConsumerState<PinScreen> {
   // ---------- Ввод ----------
 
   void _onDigit(String d) {
+    if (_wiped) return; // на промежуточном экране ввод заблокирован
     if (_entered.length >= 4) return;
     setState(() {
       _entered += d;
@@ -90,7 +104,7 @@ class _PinScreenState extends ConsumerState<PinScreen> {
     }
     final failed = _pin.failedAttempts;
     if (failed >= 3) {
-      _wipeAll();
+      _wipeAll('locked');
       return;
     }
     setState(() {
@@ -100,18 +114,58 @@ class _PinScreenState extends ConsumerState<PinScreen> {
   }
 
   /// ТЗ: 3 неверных ввода сбрасывают пин И данные пользователя.
-  void _wipeAll() {
+  /// Фикс: уведомление (SnackBar) + промежуточный экран вместо
+  /// мгновенного прыжка в "Создайте пин-код" с заполненными кружками.
+  Future<void> _wipeAll(String reason) async {
     // 1. Закрываем соединение с БД: invalidate провайдера запускает
-    //    ref.onDispose -> db.close(). Иначе файл expenses.db на Linux
-    //    удержан дескриптором и не удалится.
+    //    ref.onDispose -> db.close(). Даём close долететь до файловой
+    //    системы, иначе expenses.db останется "занят" для удаления.
     ref.invalidate(databaseProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+
     // 2. Удаляем весь каталог данных: БД, чеки, pin.json.
-    PinService.create().resetAll();
-    // 3. Режим-геттер сам перестроит экран в "создание".
+    //    resetAll поштучный и не бросает исключений (см. PinService).
+    var allDeleted = true;
+    try {
+      allDeleted = _pin.resetAll();
+    } catch (_) {
+      allDeleted = false;
+    }
+    if (!mounted) return;
+
+    // 3. Уведомление - чего не было раньше.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          allDeleted
+              ? (reason == 'locked'
+                    ? 'Слишком много неверных попыток: пин и данные удалены'
+                    : 'Пин и данные сброшены')
+              : 'Пин сброшен, но часть файлов удалить не удалось (файл был занят)',
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    // 4. Промежуточный экран: НЕ "Создайте пин-код" сразу.
+    //    Буфер ввода чист - кружки будут пустые.
     setState(() {
+      _wiped = true;
+      _wipeReason = reason;
       _entered = '';
       _firstEntered = null;
-      _error = 'Данные сброшены (3 неверных ввода). Создайте новый пин.';
+      _error = null;
+    });
+  }
+
+  /// Выход из промежуточного экрана в создание нового пина.
+  void _createNewPin() {
+    setState(() {
+      _wiped = false;
+      _entered = '';
+      _firstEntered = null;
+      _error = null;
     });
   }
 
@@ -125,6 +179,8 @@ class _PinScreenState extends ConsumerState<PinScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_wiped) return _buildWiped();
+
     final title = _isCreateMode
         ? (_firstEntered == null ? 'Создайте пин-код' : 'Подтвердите пин-код')
         : 'Введите пин-код';
@@ -155,6 +211,46 @@ class _PinScreenState extends ConsumerState<PinScreen> {
             _keypad(),
             const SizedBox(height: 24),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Промежуточный экран после сброса: объясняет, что произошло,
+  /// и только по кнопке пускает создание нового пина.
+  Widget _buildWiped() {
+    final locked = _wipeReason == 'locked';
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.gpp_bad_outlined, size: 64, color: Color(0xFF3EB8F0)),
+                const SizedBox(height: 16),
+                const Text('Пин и данные удалены', textAlign: TextAlign.center, style: TextStyle(fontSize: 22)),
+                const SizedBox(height: 12),
+                Text(
+                  locked
+                      ? 'Вы 3 раза ввели неверный пин-код.\nПин-код и все данные приложения\n(траты, чеки) безвозвратно удалены.'
+                      : 'Пин-код и все данные приложения\n(траты, чеки) безвозвратно удалены\nпо вашему запросу.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: _createNewPin,
+                    child: const Text('Создать новый пин'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

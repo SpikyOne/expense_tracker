@@ -59,11 +59,43 @@ class PinService {
     return ok;
   }
 
-  /// Сброс: удаляет весь каталог данных приложения. Не вызывать,
-  /// пока открыто соединение с БД (см. экран пина - сначала invalidate).
-  void resetAll() {
+  /// Сброс: удаляет весь каталог данных приложения - ПОШТУЧНО, а не одним
+  /// рекурсивным вызовом. Раньше dir.deleteSync(recursive: true) бросал
+  /// исключение на первом же занятом файле (expenses.db при закрывающейся
+  /// БД), из-за чего сброс обрывался молча, а экран пина оставался с
+  /// заполненными кружками. Теперь: pin.json удаляется первым (сброс пина
+  /// гарантирован), каждый следующий файл - в собственном try/catch,
+  /// занятый файл не мешает удалить остальные. Возвращает false, если
+  /// что-то удалить не удалось; исключений НЕ бросает.
+  bool resetAll() {
     final dir = Directory(appDataDir());
-    if (dir.existsSync()) dir.deleteSync(recursive: true);
+    if (!dir.existsSync()) return true;
+    // 1. Пин первым - он никогда не занят процессом.
+    try {
+      _file.deleteSync();
+    } catch (_) {}
+    // 2. Остальное по одному: занятый файл не прерывает цикл.
+    var allDeleted = true;
+    try {
+      for (final entry in dir.listSync(followLinks: false)) {
+        try {
+          if (entry is Directory) {
+            entry.deleteSync(recursive: true);
+          } else {
+            entry.deleteSync();
+          }
+        } catch (_) {
+          allDeleted = false;
+        }
+      }
+      // 3. Пустой каталог убираем; если не вышло - не страшно.
+      try {
+        if (dir.listSync().isEmpty) dir.deleteSync();
+      } catch (_) {}
+    } catch (_) {
+      allDeleted = false;
+    }
+    return allDeleted;
   }
 
   // ---------- internals ----------

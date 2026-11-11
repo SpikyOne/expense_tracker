@@ -127,17 +127,44 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void _onResetPressed() {
+  /// Фикс: уведомление о сбросе (SnackBar) + надёжное удаление
+  /// (поштучный resetAll, пауза на закрытие БД). Логика подтверждения
+  /// вторым нажатием - как была.
+  Future<void> _onResetPressed() async {
     if (!_confirmReset) {
       setState(() => _confirmReset = true);
       return;
     }
-    // 1. Закрываем БД (invalidate -> onDispose -> db.close()),
-    //    иначе файл expenses.db не удалится.
+    // 1. Закрываем БД (invalidate -> onDispose -> db.close()) и даём
+    //    close долететь, иначе expenses.db останется занят.
     ref.invalidate(databaseProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+
     // 2. Удаляем весь каталог данных (БД, чеки, pin.json).
-    PinService.create().resetAll();
-    // 3. На экран создания нового пина, стек чист.
+    var allDeleted = true;
+    try {
+      allDeleted = PinService.create().resetAll();
+    } catch (_) {
+      allDeleted = false;
+    }
+    if (!mounted) return;
+
+    // 3. Уведомление - чего не было раньше. Показываем ДО навигации:
+    //    корневой ScaffoldMessenger живёт выше навигатора и переживает
+    //    смену экрана, снекбар останется видимым и поверх пин-экрана.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          allDeleted
+              ? 'Пин и данные сброшены'
+              : 'Пин сброшен, но часть файлов удалить не удалось (файл был занят)',
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    // 4. На экран создания нового пина, стек чист.
     Navigator.of(context).pushAndRemoveUntil(
       AuroraPageRoute<void>(builder: (_) => const PinScreen()),
       (_) => false,
