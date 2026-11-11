@@ -9,7 +9,7 @@
 
 import 'dart:io' show exit;
 
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/domain/models/models.dart';
 
 int _passed = 0;
 int _failed = 0;
@@ -68,11 +68,7 @@ void main() {
     'ооо ромашка кофе с елкой',
   );
   check('buildSearchText: пустые строки', Expense.buildSearchText('', ''), '');
-  check(
-    'buildSearchText: запрос нормализуется той же функцией',
-    Expense.buildSearchText('ЁЛКА', ''),
-    'елка',
-  );
+  check('buildSearchText: запрос нормализуется той же функцией', Expense.buildSearchText('ЁЛКА', ''), 'елка');
 
   print('');
   print('Пройдено: $_passed, упало: $_failed');

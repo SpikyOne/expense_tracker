@@ -6,7 +6,7 @@
 // требовать второй запрос — лишнее. Про SQLite контракт не знает ничего:
 // фильтры выражены доменными понятиями из ТЗ.
 
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/domain/models/models.dart';
 
 /// Контракт доступа к тратам.
 abstract class ExpenseRepository {
@@ -35,4 +35,7 @@ abstract class ExpenseRepository {
     PaymentMethod? paymentMethod,
     String? searchText,
   });
+
+  /// id трат, у которых есть хотя бы один чек (колонка "Чек" отчёта).
+  Set<int> receiptExpenseIds();
 }

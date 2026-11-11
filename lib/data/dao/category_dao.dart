@@ -10,8 +10,8 @@
 //     в служебную «Без категории»: category_id в expenses NOT NULL,
 //     поэтому "трат без категории" в базе не бывает.
 
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
 
 /// Операции с таблицей categories.
 class CategoryDao {
@@ -32,10 +32,7 @@ class CategoryDao {
 
   /// Категория по id или null, если такой нет.
   Category? getById(int id) {
-    final rows = _db.rawSelect(
-      'SELECT id, name, is_default FROM categories WHERE id = ?;',
-      [id],
-    );
+    final rows = _db.rawSelect('SELECT id, name, is_default FROM categories WHERE id = ?;', [id]);
     return rows.isEmpty ? null : Category.fromMap(rows.first);
   }
 
@@ -46,13 +43,8 @@ class CategoryDao {
   /// категорией, отклонит UNIQUE-ограничение БД (SqliteException).
   int insert(String name) {
     final trimmed = _validateName(name);
-    _db.rawExecute(
-      'INSERT INTO categories (name, is_default) VALUES (?, 0);',
-      [trimmed],
-    );
-    return _db
-        .rawSelect('SELECT last_insert_rowid() AS id;')
-        .first['id'] as int;
+    _db.rawExecute('INSERT INTO categories (name, is_default) VALUES (?, 0);', [trimmed]);
+    return _db.rawSelect('SELECT last_insert_rowid() AS id;').first['id'] as int;
   }
 
   /// Переименовывает пользовательскую категорию.
@@ -62,10 +54,7 @@ class CategoryDao {
   void rename(int id, String name) {
     _requireUserCategory(id, 'переименовать');
     final trimmed = _validateName(name);
-    _db.rawExecute(
-      'UPDATE categories SET name = ? WHERE id = ?;',
-      [trimmed, id],
-    );
+    _db.rawExecute('UPDATE categories SET name = ? WHERE id = ?;', [trimmed, id]);
   }
 
   /// Удаляет пользовательскую категорию. Траты категории заранее
@@ -74,10 +63,7 @@ class CategoryDao {
   void delete(int id) {
     _requireUserCategory(id, 'удалить');
     final uncategorizedId = _uncategorizedId();
-    _db.rawExecute(
-      'UPDATE expenses SET category_id = ? WHERE category_id = ?;',
-      [uncategorizedId, id],
-    );
+    _db.rawExecute('UPDATE expenses SET category_id = ? WHERE category_id = ?;', [uncategorizedId, id]);
     _db.rawExecute('DELETE FROM categories WHERE id = ?;', [id]);
   }
 
@@ -100,23 +86,16 @@ class CategoryDao {
       throw StateError('Категория id=$id не найдена — $action невозможно');
     }
     if (category.isDefault) {
-      throw StateError(
-        'Стандартную категорию «${category.name}» нельзя $action',
-      );
+      throw StateError('Стандартную категорию «${category.name}» нельзя $action');
     }
   }
 
   /// id служебной категории-приёмника. Её создаёт сид, отсутствие -
   /// признак испорченной БД.
   int _uncategorizedId() {
-    final rows = _db.rawSelect(
-      'SELECT id FROM categories WHERE name = ?;',
-      [DatabaseService.uncategorizedName],
-    );
+    final rows = _db.rawSelect('SELECT id FROM categories WHERE name = ?;', [DatabaseService.uncategorizedName]);
     if (rows.isEmpty) {
-      throw StateError(
-        'Служебная категория «${DatabaseService.uncategorizedName}» не найдена',
-      );
+      throw StateError('Служебная категория «${DatabaseService.uncategorizedName}» не найдена');
     }
     return rows.first['id'] as int;
   }

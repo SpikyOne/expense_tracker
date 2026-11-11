@@ -9,10 +9,10 @@
 
 import 'dart:io';
 
-import 'package:expense_tracker/data/dao/category_dao.dart';
-import 'package:expense_tracker/data/dao/expense_dao.dart';
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/data/dao/category_dao.dart';
+import 'package:tracker_1/data/dao/expense_dao.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 int _passed = 0;
@@ -60,9 +60,7 @@ void main() {
   final cafeId = categoryDao.insert('Кафе у дома');
 
   // Командировка для проверки trip_id (TripDao появится в М3.4).
-  db.rawExecute(
-    "INSERT INTO trips (title, start_date, end_date) VALUES ('Сапсан', '2026-10-22', '2026-10-25');",
-  );
+  db.rawExecute("INSERT INTO trips (title, start_date, end_date) VALUES ('Сапсан', '2026-10-22', '2026-10-25');");
   final tripId = db.rawSelect('SELECT MAX(id) AS id FROM trips;').first['id'] as int;
 
   Expense expense(
@@ -85,9 +83,7 @@ void main() {
     tripId: trip,
   );
 
-  final e1Id = dao.insert(
-    expense(productsId, 15000, '2026-10-20', payee: 'ООО «Ромашка»', comment: 'Кофе с Ёлкой'),
-  );
+  final e1Id = dao.insert(expense(productsId, 15000, '2026-10-20', payee: 'ООО «Ромашка»', comment: 'Кофе с Ёлкой'));
   final e2Id = dao.insert(
     expense(productsId, 9900, '2026-10-24', payee: 'Пятёрочка', comment: 'Молоко', method: PaymentMethod.cash),
   );
@@ -96,13 +92,20 @@ void main() {
   );
   final e4Id = dao.insert(expense(transportId, 6000, '2026-10-25', payee: 'Метро', method: PaymentMethod.other));
   final e5Id = dao.insert(
-    expense(transportId, 120000, '2026-10-22', payee: 'ООО «ЖелДор»', comment: 'Билет Сапсан', business: true, trip: tripId),
+    expense(
+      transportId,
+      120000,
+      '2026-10-22',
+      payee: 'ООО «ЖелДор»',
+      comment: 'Билет Сапсан',
+      business: true,
+      trip: tripId,
+    ),
   );
   final e0Id = dao.insert(expense(productsId, 100, '2026-10-19'));
 
-  String searchTextOf(int id) => db
-      .rawSelect('SELECT search_text FROM expenses WHERE id = ?;', [id])
-      .first['search_text'] as String;
+  String searchTextOf(int id) =>
+      db.rawSelect('SELECT search_text FROM expenses WHERE id = ?;', [id]).first['search_text'] as String;
 
   List<int> ids(List<ExpenseWithCategory> rows) => [for (final r in rows) r.expense.id!];
 
@@ -125,11 +128,7 @@ void main() {
       comment: 'Кофе с Ёлкой',
     ),
   );
-  check(
-    'getById: категория из JOIN',
-    fetched.category,
-    Category(id: productsId, name: 'Продукты', isDefault: true),
-  );
+  check('getById: категория из JOIN', fetched.category, Category(id: productsId, name: 'Продукты', isDefault: true));
   check('getById: is_business сохраняется', dao.getById(e5Id)!.expense.isBusiness, true);
   check('getById: trip_id сохраняется', dao.getById(e5Id)!.expense.tripId, tripId);
   check('getById: несуществующий id — null', dao.getById(-1), null);
@@ -187,7 +186,11 @@ void main() {
     ids(dao.query(fromDateIso: '2026-10-22', toDateIso: '2026-10-24')).join('|'),
     [e3Id, e2Id, e5Id].join('|'),
   );
-  check('фильтр: только нижняя граница', ids(dao.query(fromDateIso: '2026-10-24')).join('|'), [e4Id, e3Id, e2Id].join('|'));
+  check(
+    'фильтр: только нижняя граница',
+    ids(dao.query(fromDateIso: '2026-10-24')).join('|'),
+    [e4Id, e3Id, e2Id].join('|'),
+  );
   check(
     'фильтр: период + категория (AND)',
     ids(dao.query(fromDateIso: '2026-10-19', toDateIso: '2026-10-20', categoryId: productsId)).join('|'),
@@ -199,7 +202,11 @@ void main() {
   check('поиск: по комментарию', ids(dao.query(searchText: 'латте')).join('|'), [e3Id].join('|'));
   check('поиск: ё → е, по основе слова', ids(dao.query(searchText: 'Ёлк')).join('|'), [e1Id].join('|'));
   check('поиск: ё в запросе и в данных', ids(dao.query(searchText: 'Пятёрочка')).join('|'), [e2Id].join('|'));
-  check('поиск: регистр и пунктуация не мешают', ids(dao.query(searchText: 'ООО, РОМАШКА!')).join('|'), [e1Id].join('|'));
+  check(
+    'поиск: регистр и пунктуация не мешают',
+    ids(dao.query(searchText: 'ООО, РОМАШКА!')).join('|'),
+    [e1Id].join('|'),
+  );
   check('поиск: после правки находится новое слово', ids(dao.query(searchText: 'булочк')).join('|'), [e1Id].join('|'));
   check('поиск: пустой результат', ids(dao.query(searchText: 'несуществующее слово')).join('|'), '');
   check(
@@ -212,26 +219,23 @@ void main() {
     ids(dao.query(searchText: 'молоко', categoryId: cafeId)).join('|'),
     '',
   );
-  check('поиск: запрос из знаков препинания — фильтр пропущен', ids(dao.query(searchText: '?!')).join('|'), allIds.join('|'));
+  check(
+    'поиск: запрос из знаков препинания — фильтр пропущен',
+    ids(dao.query(searchText: '?!')).join('|'),
+    allIds.join('|'),
+  );
 
   // ---------- Удаление ----------
-  checkThrows<StateError>(
-    'delete: несуществующая трата — StateError',
-    () => dao.delete(-1),
-    'не найдена',
-  );
+  checkThrows<StateError>('delete: несуществующая трата — StateError', () => dao.delete(-1), 'не найдена');
   final e6Id = dao.insert(expense(transportId, 500, '2026-10-26', payee: 'Вокзал', comment: 'Кофе в дорогу'));
-  db.rawExecute(
-    'INSERT INTO receipts (expense_id, file_path, created_at) VALUES (?, ?, ?);',
-    [e6Id, 'receipts/2026/10/check.jpg', '2026-10-26T10:00:00'],
-  );
+  db.rawExecute('INSERT INTO receipts (expense_id, file_path, created_at) VALUES (?, ?, ?);', [
+    e6Id,
+    'receipts/2026/10/check.jpg',
+    '2026-10-26T10:00:00',
+  ]);
   dao.delete(e6Id);
   check('delete: трата исчезла', dao.getById(e6Id), null);
-  check(
-    'delete: чеки удаляются каскадом',
-    db.rawSelect('SELECT COUNT(*) AS n FROM receipts;').first['n'] as int,
-    0,
-  );
+  check('delete: чеки удаляются каскадом', db.rawSelect('SELECT COUNT(*) AS n FROM receipts;').first['n'] as int, 0);
 
   db.close();
 

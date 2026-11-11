@@ -14,7 +14,7 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/domain/models/models.dart';
 import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -37,8 +37,8 @@ void configureSqliteForAurora() {
 class DatabaseService {
   /// Организация и приложение — ровно как в .desktop ([X-Application]).
   /// Из них песочница строит каталоги, принадлежащие приложению.
-  static const orgName = 'ru.grigorev';
-  static const appName = 'expense_tracker';
+  static const orgName = 'ru.volgait';
+  static const appName = 'tracker_1';
 
   /// Идентификатор приложения.
   static const appId = '$orgName.$appName';
@@ -86,7 +86,7 @@ class DatabaseService {
     final dbPath = path ?? defaultDatabasePath();
     // Диагностика пути: разные способы запуска (тулчейн/лаунчер) могут
     // давать разное окружение — путь в логе делает это видимым сразу.
-    stderr.writeln('[expense_tracker] БД: $dbPath');
+    stderr.writeln('[tracker_1] БД: $dbPath');
     File(dbPath).parent.createSync(recursive: true);
     return DatabaseService._(sqlite3.open(dbPath), dbPath);
   }
@@ -113,10 +113,7 @@ class DatabaseService {
   /// Все категории: стандартные первыми, «Без категории» — последней
   /// среди стандартных, затем пользовательские; внутри групп по алфавиту.
   List<Category> getCategories() {
-    final rows = _db.select(
-      'SELECT * FROM categories ORDER BY is_default DESC, name = ?, name;',
-      [uncategorizedName],
-    );
+    final rows = _db.select('SELECT * FROM categories ORDER BY is_default DESC, name = ?, name;', [uncategorizedName]);
     return rows.map(Category.fromMap).toList();
   }
 
@@ -130,9 +127,7 @@ class DatabaseService {
   /// Прикладной код использует только методы сервиса и DAO, не raw-запросы.
   List<Map<String, Object?>> rawSelect(String sql, [List<Object?> parameters = const []]) {
     final result = _db.select(sql, parameters);
-    return [
-      for (final row in result) Map<String, Object?>.fromIterables(result.columnNames, row.values),
-    ];
+    return [for (final row in result) Map<String, Object?>.fromIterables(result.columnNames, row.values)];
   }
 
   // ---------- Схема и миграции ----------
@@ -250,5 +245,4 @@ class DatabaseService {
       stmt.dispose();
     }
   }
-
 }

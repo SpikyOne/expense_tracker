@@ -1,6 +1,6 @@
-name: expense_tracker
+name: tracker_1
 description: "Трекер расходов - учёт личных и служебных расходов для ОС Аврора"
-organization: "ru.grigorev"
+organization: "ru.volgait"
 license: "BSD-3-Clause"
 publish_to: 'none'
 
@@ -26,6 +26,16 @@ dependencies:
   
   sqlite3: ^2.9.4
 
+  # Поделиться отчётом: интерфейс share_plus
+  share_plus: ^12.0.2
+
+  # SHA-256 для хэша пин-кода. Pure-Dart
+  crypto: ^3.0.8
+
+  archive: ^3.6.1
+
+  dbus: ^0.7.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -33,3 +43,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+dependency_overrides:
+  share_plus:
+    hosted:
+      url: https://sdk-repo.omprussia.ru/sdk/flutter/pub
+      name: share_plus

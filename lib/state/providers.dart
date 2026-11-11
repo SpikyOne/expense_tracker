@@ -11,15 +11,15 @@
 //   (отдельная утилитарная ветка для М6 и проверок:)
 //     databaseProvider -> categoryDaoProvider / tripDaoProvider / expenseDaoProvider
 
-import 'package:expense_tracker/data/dao/category_dao.dart';
-import 'package:expense_tracker/data/dao/expense_dao.dart';
-import 'package:expense_tracker/data/dao/trip_dao.dart';
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/data/repositories/category_repository_impl.dart';
-import 'package:expense_tracker/data/repositories/expense_repository_impl.dart';
-import 'package:expense_tracker/data/repositories/trip_repository_impl.dart';
-import 'package:expense_tracker/domain/models/models.dart';
-import 'package:expense_tracker/domain/repositories/repositories.dart';
+import 'package:tracker_1/data/dao/category_dao.dart';
+import 'package:tracker_1/data/dao/expense_dao.dart';
+import 'package:tracker_1/data/dao/trip_dao.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/data/repositories/category_repository_impl.dart';
+import 'package:tracker_1/data/repositories/expense_repository_impl.dart';
+import 'package:tracker_1/data/repositories/trip_repository_impl.dart';
+import 'package:tracker_1/domain/models/models.dart';
+import 'package:tracker_1/domain/repositories/repositories.dart';
 import 'package:riverpod/riverpod.dart';
 
 import 'expense_filter.dart';
@@ -49,17 +49,11 @@ final databaseProvider = Provider<DatabaseService>((ref) {
 
 // ---------- DAO ----------
 
-final categoryDaoProvider = Provider<CategoryDao>(
-  (ref) => CategoryDao(ref.watch(databaseProvider)),
-);
+final categoryDaoProvider = Provider<CategoryDao>((ref) => CategoryDao(ref.watch(databaseProvider)));
 
-final tripDaoProvider = Provider<TripDao>(
-  (ref) => TripDao(ref.watch(databaseProvider)),
-);
+final tripDaoProvider = Provider<TripDao>((ref) => TripDao(ref.watch(databaseProvider)));
 
-final expenseDaoProvider = Provider<ExpenseDao>(
-  (ref) => ExpenseDao(ref.watch(databaseProvider)),
-);
+final expenseDaoProvider = Provider<ExpenseDao>((ref) => ExpenseDao(ref.watch(databaseProvider)));
 
 // ---------- Репозитории ----------
 
@@ -68,9 +62,7 @@ final categoryRepositoryProvider = Provider<CategoryRepository>(
   (ref) => CategoryRepositoryImpl(ref.watch(databaseProvider)),
 );
 
-final tripRepositoryProvider = Provider<TripRepository>(
-  (ref) => TripRepositoryImpl(ref.watch(databaseProvider)),
-);
+final tripRepositoryProvider = Provider<TripRepository>((ref) => TripRepositoryImpl(ref.watch(databaseProvider)));
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>(
   (ref) => ExpenseRepositoryImpl(ref.watch(databaseProvider)),
@@ -83,9 +75,7 @@ final expenseRepositoryProvider = Provider<ExpenseRepository>(
 ///
 /// Riverpod 3: вместо legacy StateProvider — NotifierProvider, мутации
 /// инкапсулированы методами, UI не собирает copyWith сам.
-final expenseFilterProvider = NotifierProvider<ExpenseFilterNotifier, ExpenseFilter>(
-  ExpenseFilterNotifier.new,
-);
+final expenseFilterProvider = NotifierProvider<ExpenseFilterNotifier, ExpenseFilter>(ExpenseFilterNotifier.new);
 
 /// Состояние и мутации фильтра трат.
 class ExpenseFilterNotifier extends Notifier<ExpenseFilter> {
@@ -93,24 +83,20 @@ class ExpenseFilterNotifier extends Notifier<ExpenseFilter> {
   ExpenseFilter build() => const ExpenseFilter();
 
   /// null снимает границу периода.
-  void setFrom(String? dateIso) =>
-      state = state.copyWith(fromDateIso: dateIso, clearFrom: dateIso == null);
+  void setFrom(String? dateIso) => state = state.copyWith(fromDateIso: dateIso, clearFrom: dateIso == null);
 
   /// null снимает границу периода.
-  void setTo(String? dateIso) =>
-      state = state.copyWith(toDateIso: dateIso, clearTo: dateIso == null);
+  void setTo(String? dateIso) => state = state.copyWith(toDateIso: dateIso, clearTo: dateIso == null);
 
   /// null = «все категории».
-  void setCategory(int? id) =>
-      state = state.copyWith(categoryId: id, clearCategory: id == null);
+  void setCategory(int? id) => state = state.copyWith(categoryId: id, clearCategory: id == null);
 
   /// null = «все способы оплаты».
-  void setPayment(PaymentMethod? method) =>
-      state = state.copyWith(paymentMethod: method, clearPayment: method == null);
+  void setPayment(PaymentMethod? method) => state = state.copyWith(paymentMethod: method, clearPayment: method == null);
 
   /// М6.2: UI поиска появится позже — провайдер готов уже сейчас.
-  void setSearch(String? text) => state = state.copyWith(
-      searchText: text, clearSearch: text == null || text.trim().isEmpty);
+  void setSearch(String? text) =>
+      state = state.copyWith(searchText: text, clearSearch: text == null || text.trim().isEmpty);
 
   void reset() => state = const ExpenseFilter();
 }
@@ -118,14 +104,10 @@ class ExpenseFilterNotifier extends Notifier<ExpenseFilter> {
 // ---------- Списки для экранов ----------
 
 /// Категории в порядке DAO: стандартные, затем пользовательские.
-final categoriesProvider = FutureProvider<List<Category>>(
-  (ref) => ref.watch(categoryRepositoryProvider).getAll(),
-);
+final categoriesProvider = FutureProvider<List<Category>>((ref) => ref.watch(categoryRepositoryProvider).getAll());
 
 /// Командировки: позже начинающиеся раньше.
-final tripsProvider = FutureProvider<List<Trip>>(
-  (ref) => ref.watch(tripRepositoryProvider).query(),
-);
+final tripsProvider = FutureProvider<List<Trip>>((ref) => ref.watch(tripRepositoryProvider).query());
 
 /// Траты с категориями: новые раньше. Пока без параметров — фильтры и
 /// поиск из М6 сделаем отдельным параметризованным провайдером поверх
@@ -140,11 +122,19 @@ final expensesProvider = FutureProvider<List<ExpenseWithCategory>>(
 /// не нужны (пригодится в М11).
 final filteredExpensesProvider = FutureProvider<List<ExpenseWithCategory>>((ref) {
   final filter = ref.watch(expenseFilterProvider);
-  return ref.watch(expenseRepositoryProvider).query(
-    fromDateIso: filter.fromDateIso,
-    toDateIso: filter.toDateIso,
-    categoryId: filter.categoryId,
-    paymentMethod: filter.paymentMethod,
-    searchText: filter.searchText,
-  );
+  return ref
+      .watch(expenseRepositoryProvider)
+      .query(
+        fromDateIso: filter.fromDateIso,
+        toDateIso: filter.toDateIso,
+        categoryId: filter.categoryId,
+        paymentMethod: filter.paymentMethod,
+        searchText: filter.searchText,
+      );
 });
+
+/// id трат с чеком — колонка "Чек" MD-отчёта. Отдельный FutureProvider:
+/// отчёт перечитывает его независимо от списка трат.
+final receiptExpenseIdsProvider = FutureProvider<Set<int>>(
+  (ref) => ref.watch(expenseRepositoryProvider).receiptExpenseIds(),
+);

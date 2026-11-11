@@ -6,17 +6,11 @@
 // провайдер-фильтр пробрасывает их туда 1:1. null = фильтр не задан.
 // Поиск (searchText) готов заранее — его UI появится в М6.2.
 
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/domain/models/models.dart';
 
 /// Параметры выборки трат для экрана "Траты".
 class ExpenseFilter {
-  const ExpenseFilter({
-    this.fromDateIso,
-    this.toDateIso,
-    this.categoryId,
-    this.paymentMethod,
-    this.searchText,
-  });
+  const ExpenseFilter({this.fromDateIso, this.toDateIso, this.categoryId, this.paymentMethod, this.searchText});
 
   /// Левая граница периода включительно ('2026-10-01') или null.
   final String? fromDateIso;
@@ -35,23 +29,15 @@ class ExpenseFilter {
 
   /// Задан ли хотя бы один фильтр.
   bool get isActive =>
-      fromDateIso != null ||
-      toDateIso != null ||
-      categoryId != null ||
-      paymentMethod != null ||
-      searchText != null;
+      fromDateIso != null || toDateIso != null || categoryId != null || paymentMethod != null || searchText != null;
 
   /// Задан ли период (обе границы или одна).
   bool get hasPeriod => fromDateIso != null || toDateIso != null;
 
   /// Сколько ГРУПП фильтров активно — для бейджа на экране: период
   /// считается одной группой независимо от числа заданных границ.
-  int get activeCount => [
-        hasPeriod,
-        categoryId != null,
-        paymentMethod != null,
-        searchText != null,
-      ].where((active) => active).length;
+  int get activeCount =>
+      [hasPeriod, categoryId != null, paymentMethod != null, searchText != null].where((active) => active).length;
 
   /// Копия с изменёнными полями. Nullable-поля нельзя «присвоить null»
   /// обычным copyWith — как в Expense.copyWith, для сброса есть явные
@@ -67,17 +53,17 @@ class ExpenseFilter {
     bool clearCategory = false,
     bool clearPayment = false,
     bool clearSearch = false,
-  }) =>
-      ExpenseFilter(
-        fromDateIso: clearFrom ? null : (fromDateIso ?? this.fromDateIso),
-        toDateIso: clearTo ? null : (toDateIso ?? this.toDateIso),
-        categoryId: clearCategory ? null : (categoryId ?? this.categoryId),
-        paymentMethod: clearPayment ? null : (paymentMethod ?? this.paymentMethod),
-        searchText: clearSearch ? null : (searchText ?? this.searchText),
-      );
+  }) => ExpenseFilter(
+    fromDateIso: clearFrom ? null : (fromDateIso ?? this.fromDateIso),
+    toDateIso: clearTo ? null : (toDateIso ?? this.toDateIso),
+    categoryId: clearCategory ? null : (categoryId ?? this.categoryId),
+    paymentMethod: clearPayment ? null : (paymentMethod ?? this.paymentMethod),
+    searchText: clearSearch ? null : (searchText ?? this.searchText),
+  );
 
   @override
-  String toString() => 'ExpenseFilter(from: $fromDateIso, to: $toDateIso, '
+  String toString() =>
+      'ExpenseFilter(from: $fromDateIso, to: $toDateIso, '
       'category: $categoryId, payment: $paymentMethod, search: "$searchText")';
 
   @override
@@ -91,6 +77,5 @@ class ExpenseFilter {
           other.searchText == searchText;
 
   @override
-  int get hashCode =>
-      Object.hash(fromDateIso, toDateIso, categoryId, paymentMethod, searchText);
+  int get hashCode => Object.hash(fromDateIso, toDateIso, categoryId, paymentMethod, searchText);
 }

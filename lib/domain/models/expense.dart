@@ -63,12 +63,11 @@ class Expense {
   static const colComment = 'comment';
   static const colIsBusiness = 'is_business';
   static const colTripId = 'trip_id';
-  
+
   /// Производная колонка поиска (схема v2). В toMap/fromMap не входит:
   /// это хранилище для поиска, а не поле домена; DAO считает её
   /// через [buildSearchText] при каждой вставке и правке.
   static const colSearchText = 'search_text';
-
 
   /// id в БД; null — трата ещё не сохранена.
   final int? id;

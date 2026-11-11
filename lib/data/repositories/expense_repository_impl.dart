@@ -2,10 +2,10 @@
 //
 // Реализация ExpenseRepository поверх ExpenseDao.
 
-import 'package:expense_tracker/data/dao/expense_dao.dart';
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
-import 'package:expense_tracker/domain/repositories/repositories.dart';
+import 'package:tracker_1/data/dao/expense_dao.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
+import 'package:tracker_1/domain/repositories/repositories.dart';
 
 /// SQLite-реализация контракта трат.
 class ExpenseRepositoryImpl implements ExpenseRepository {
@@ -39,4 +39,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     paymentMethod: paymentMethod,
     searchText: searchText,
   );
+
+  @override
+  Set<int> receiptExpenseIds() => _dao.receiptExpenseIds();
 }

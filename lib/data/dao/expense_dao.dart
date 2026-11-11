@@ -8,8 +8,8 @@
 // мимо DAO оставит колонку пустой — именно это ловил check_database
 // в М3.1.
 
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
 
 /// Операции с таблицей expenses.
 class ExpenseDao {
@@ -26,15 +26,14 @@ class ExpenseDao {
 
   /// Разбор строки JOIN-выборки в пару «трата + категория».
   /// Expense.fromMap читает свои колонки, лишние (c_*) игнорирует.
-  static ExpenseWithCategory _fromRow(Map<String, Object?> row) =>
-      ExpenseWithCategory(
-        expense: Expense.fromMap(row),
-        category: Category(
-          id: row['c_id'] as int?,
-          name: row['c_name'] as String,
-          isDefault: (row['c_is_default'] as int? ?? 0) != 0,
-        ),
-      );
+  static ExpenseWithCategory _fromRow(Map<String, Object?> row) => ExpenseWithCategory(
+    expense: Expense.fromMap(row),
+    category: Category(
+      id: row['c_id'] as int?,
+      name: row['c_name'] as String,
+      isDefault: (row['c_is_default'] as int? ?? 0) != 0,
+    ),
+  );
 
   /// Вставляет трату, возвращает её id.
   /// search_text заполняется автоматически из payee и comment.
@@ -55,9 +54,7 @@ class ExpenseDao {
         Expense.buildSearchText(expense.payee, expense.comment),
       ],
     );
-    return _db
-        .rawSelect('SELECT last_insert_rowid() AS id;')
-        .first['id'] as int;
+    return _db.rawSelect('SELECT last_insert_rowid() AS id;').first['id'] as int;
   }
 
   /// Перезаписывает трату целиком (кроме id).
@@ -164,5 +161,15 @@ class ExpenseDao {
       params,
     );
     return [for (final row in rows) _fromRow(row)];
+  }
+
+  /// id трат, у которых есть хотя бы один чек.
+  ///
+  /// Отдельный лёгкий запрос вместо JOIN в query(): колонка «чек»
+  /// нужна только MD-отчёту, тащить её в каждую выборку списка -
+  /// лишнее. DISTINCT: у траты может быть несколько фото чека.
+  Set<int> receiptExpenseIds() {
+    final rows = _db.rawSelect('SELECT DISTINCT expense_id FROM receipts;');
+    return {for (final row in rows) row['expense_id'] as int};
   }
 }
