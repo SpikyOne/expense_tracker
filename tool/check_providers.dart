@@ -16,13 +16,12 @@
 
 import 'dart:io';
 
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
-import 'package:expense_tracker/state/providers.dart';
-import 'package:expense_tracker/state/expense_filter.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
+import 'package:tracker_1/state/providers.dart';
+import 'package:tracker_1/state/expense_filter.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:sqlite3/sqlite3.dart';
-
 
 int _passed = 0;
 int _failed = 0;
@@ -39,9 +38,7 @@ void check(String name, Object? actual, Object? expected) {
 
 Future<void> main() async {
   final db = DatabaseService.inMemory();
-  final container = ProviderContainer(
-    overrides: [databaseProvider.overrideWithValue(db)],
-  );
+  final container = ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);
 
   // Слушатели фиксируют граф: без них провайдеры без слушателей могут
   // утилизироваться контейнером, и проверки кэша станут плавающими.
@@ -57,11 +54,7 @@ Future<void> main() async {
   container.listen(expensesProvider, (_, _) {});
 
   // ---------- Сборка графа и кэш ----------
-  check(
-    'overrideWithValue: провайдер отдаёт подменённую БД',
-    identical(container.read(databaseProvider), db),
-    true,
-  );
+  check('overrideWithValue: провайдер отдаёт подменённую БД', identical(container.read(databaseProvider), db), true);
   check(
     'databaseProvider кэшируется (два чтения - один экземпляр)',
     identical(container.read(databaseProvider), container.read(databaseProvider)),
@@ -86,15 +79,11 @@ Future<void> main() async {
   check('categoriesProvider: первая - «Здоровье»', categories.first.name, 'Здоровье');
 
   // ---------- Командировки: insert -> invalidate ----------
-  check(
-    'tripsProvider: пусто в свежей БД',
-    (await container.read(tripsProvider.future)).length,
-    0,
-  );
+  check('tripsProvider: пусто в свежей БД', (await container.read(tripsProvider.future)).length, 0);
 
-  final tripId = container.read(tripRepositoryProvider).insert(
-    const Trip(title: 'Сапсан', startDateIso: '2026-10-22', endDateIso: '2026-10-25'),
-  );
+  final tripId = container
+      .read(tripRepositoryProvider)
+      .insert(const Trip(title: 'Сапсан', startDateIso: '2026-10-22', endDateIso: '2026-10-25'));
   check('insert через репозиторий: id > 0', tripId > 0, true);
   check(
     'FutureProvider кэширует: без invalidate список старый',
@@ -109,16 +98,18 @@ Future<void> main() async {
 
   // ---------- Траты: JOIN категории через провайдеры ----------
   final products = categories.firstWhere((c) => c.name == 'Продукты');
-  final expenseId = container.read(expenseRepositoryProvider).insert(
-    Expense(
-      amountKopecks: 19999,
-      dateIso: '2026-10-23',
-      categoryId: products.id!,
-      payee: 'ООО "Ромашка"',
-      comment: 'Кофе на переговоры',
-      tripId: tripId,
-    ),
-  );
+  final expenseId = container
+      .read(expenseRepositoryProvider)
+      .insert(
+        Expense(
+          amountKopecks: 19999,
+          dateIso: '2026-10-23',
+          categoryId: products.id!,
+          payee: 'ООО "Ромашка"',
+          comment: 'Кофе на переговоры',
+          tripId: tripId,
+        ),
+      );
   check('insert траты через репозиторий: id > 0', expenseId > 0, true);
 
   container.invalidate(expensesProvider);
@@ -131,11 +122,7 @@ Future<void> main() async {
   container.listen(expenseFilterProvider, (_, _) {});
   container.listen(filteredExpensesProvider, (_, _) {});
 
-  check(
-    'фильтр по умолчанию пуст',
-    container.read(expenseFilterProvider),
-    const ExpenseFilter(),
-  );
+  check('фильтр по умолчанию пуст', container.read(expenseFilterProvider), const ExpenseFilter());
 
   container.invalidate(filteredExpensesProvider);
   check(
@@ -152,27 +139,15 @@ Future<void> main() async {
     filteredByCategory.every((item) => item.category.id == products.id),
     true,
   );
-  check(
-    'бейдж: активна 1 группа фильтров',
-    container.read(expenseFilterProvider).activeCount,
-    1,
-  );
+  check('бейдж: активна 1 группа фильтров', container.read(expenseFilterProvider).activeCount, 1);
 
   container.read(expenseFilterProvider.notifier).setFrom('2030-01-01');
   container.invalidate(filteredExpensesProvider);
-  check(
-    'период в будущем даёт пустой список',
-    (await container.read(filteredExpensesProvider.future)).isEmpty,
-    true,
-  );
+  check('период в будущем даёт пустой список', (await container.read(filteredExpensesProvider.future)).isEmpty, true);
 
   container.read(expenseFilterProvider.notifier).reset();
   container.invalidate(filteredExpensesProvider);
-  check(
-    'сброс вернул полный список',
-    (await container.read(filteredExpensesProvider.future)).length,
-    expenses.length,
-  );
+  check('сброс вернул полный список', (await container.read(filteredExpensesProvider.future)).length, expenses.length);
 
   // ---------- поиск по получателю и комментарию ----------
   container.read(expenseFilterProvider.notifier).setSearch('КОФЕ');
@@ -204,11 +179,7 @@ Future<void> main() async {
   check('insert категории через репозиторий: id > 0', newCategoryId > 0, true);
   container.invalidate(categoriesProvider);
   final categoriesAfter = await container.read(categoriesProvider.future);
-  check(
-    'новая категория видна после invalidate',
-    categoriesAfter.any((c) => c.id == newCategoryId),
-    true,
-  );
+  check('новая категория видна после invalidate', categoriesAfter.any((c) => c.id == newCategoryId), true);
 
   // ---------- контракт добавления своей категории ----------
   // Точный дубликат отклоняет UNIQUE уже на уровне репозитория;
@@ -232,8 +203,7 @@ Future<void> main() async {
   // Порядок DAO: все пользовательские — после всех стандартных.
   check(
     'М7.1: свои категории идут после стандартных',
-    allAfterInsert.indexWhere((c) => !c.isDefault) >
-        allAfterInsert.lastIndexWhere((c) => c.isDefault),
+    allAfterInsert.indexWhere((c) => !c.isDefault) > allAfterInsert.lastIndexWhere((c) => c.isDefault),
     true,
   );
 
@@ -246,11 +216,7 @@ Future<void> main() async {
   categoryRepo.rename(gymId, '  Фитнес  ');
   container.invalidate(categoriesProvider);
   final afterRename = await container.read(categoriesProvider.future);
-  check(
-    'rename обрезал пробелы',
-    afterRename.firstWhere((c) => c.id == gymId).name,
-    'Фитнес',
-  );
+  check('rename обрезал пробелы', afterRename.firstWhere((c) => c.id == gymId).name, 'Фитнес');
 
   // Стандартную категорию переименовывать нельзя — StateError из DAO.
   var renameDefaultRejected = false;
@@ -264,36 +230,21 @@ Future<void> main() async {
   // Удаление: вешаем трату на «Фитнес» и удаляем категорию —
   // траты обязаны переехать в «Без категории» и не потеряться.
   final fitnessId = afterRename.firstWhere((c) => c.name == 'Фитнес').id!;
-  container.read(expenseRepositoryProvider).insert(
-    Expense(
-      amountKopecks: 150000,
-      dateIso: '2026-10-25',
-      categoryId: fitnessId,
-      payee: 'Фитнес-клуб',
-    ),
-  );
+  container
+      .read(expenseRepositoryProvider)
+      .insert(Expense(amountKopecks: 150000, dateIso: '2026-10-25', categoryId: fitnessId, payee: 'Фитнес-клуб'));
 
   categoryRepo.delete(fitnessId);
   container.invalidate(categoriesProvider);
   container.invalidate(expensesProvider);
   final afterDelete = await container.read(categoriesProvider.future);
-  check(
-    'Категория удалена из списка',
-    afterDelete.any((c) => c.id == fitnessId),
-    false,
-  );
+  check('Категория удалена из списка', afterDelete.any((c) => c.id == fitnessId), false);
   check('Состав списка после удаления', afterDelete.length, 10);
 
   final expensesAfterDelete = await container.read(expensesProvider.future);
   check('Траты не потерялись', expensesAfterDelete.length, 2);
-  final moved = expensesAfterDelete.firstWhere(
-    (e) => e.expense.payee == 'Фитнес-клуб',
-  );
-  check(
-    'Траты переехали в «Без категории»',
-    moved.category.name,
-    DatabaseService.uncategorizedName,
-  );
+  final moved = expensesAfterDelete.firstWhere((e) => e.expense.payee == 'Фитнес-клуб');
+  check('Траты переехали в «Без категории»', moved.category.name, DatabaseService.uncategorizedName);
 
   // Удалять стандартную нельзя — StateError из DAO.
   var deleteDefaultRejected = false;
@@ -305,7 +256,7 @@ Future<void> main() async {
   check('Delete стандартной отклонён', deleteDefaultRejected, true);
 
   // ---------- Утилизация контейнера закрывает БД ----------
-    // Основной сценарий окончен. При overrideWithValue владение БД у
+  // Основной сценарий окончен. При overrideWithValue владение БД у
   // проверки: провайдер значение не строил и не закрывает — закрываем сами.
   container.dispose();
   db.close();
@@ -316,9 +267,7 @@ Future<void> main() async {
   // файл в ~/.local/share. Проверяются настоящий build и ref.onDispose.
   final tempDir = Directory.systemTemp.createTempSync('et_check_db_');
   final liveContainer = ProviderContainer(
-    overrides: [
-      databasePathProvider.overrideWithValue('${tempDir.path}/expenses.db'),
-    ],
+    overrides: [databasePathProvider.overrideWithValue('${tempDir.path}/expenses.db')],
   );
   liveContainer.listen(databaseProvider, (_, _) {});
   final liveDb = liveContainer.read(databaseProvider);
@@ -349,5 +298,5 @@ Future<void> main() async {
   print('ВСЁ ОК');
 
   exit(0); // Riverpod держит фоновые задачи планировщика,
-           // без exit() VM в CLI не завершается
+  // без exit() VM в CLI не завершается
 }

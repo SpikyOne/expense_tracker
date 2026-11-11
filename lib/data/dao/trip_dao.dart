@@ -10,8 +10,8 @@
 // Валидация периода (end_date >= start_date) живёт в CHECK-ограничении
 // схемы — DAO её не дублирует.
 
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
 
 /// Операции с таблицей trips.
 class TripDao {
@@ -21,10 +21,11 @@ class TripDao {
 
   /// Вставляет командировку, возвращает её id.
   int insert(Trip trip) {
-    _db.rawExecute(
-      'INSERT INTO trips (title, start_date, end_date) VALUES (?, ?, ?);',
-      [trip.title, trip.startDateIso, trip.endDateIso],
-    );
+    _db.rawExecute('INSERT INTO trips (title, start_date, end_date) VALUES (?, ?, ?);', [
+      trip.title,
+      trip.startDateIso,
+      trip.endDateIso,
+    ]);
     return _db.rawSelect('SELECT last_insert_rowid() AS id;').first['id'] as int;
   }
 
@@ -37,10 +38,12 @@ class TripDao {
     if (getById(id) == null) {
       throw StateError('Командировка id=$id не найдена — обновление невозможно');
     }
-    _db.rawExecute(
-      'UPDATE trips SET title = ?, start_date = ?, end_date = ? WHERE id = ?;',
-      [trip.title, trip.startDateIso, trip.endDateIso, id],
-    );
+    _db.rawExecute('UPDATE trips SET title = ?, start_date = ?, end_date = ? WHERE id = ?;', [
+      trip.title,
+      trip.startDateIso,
+      trip.endDateIso,
+      id,
+    ]);
   }
 
   /// Командировка по id или null, если такой нет.

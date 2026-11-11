@@ -33,9 +33,8 @@ class CategoriesScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         appBar: const AuroraAppBar(headerText: 'Категории'),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => Navigator.of(context).push(
-            AuroraPageRoute<void>(builder: (_) => const CategoryFormScreen()),
-          ),
+          onPressed: () =>
+              Navigator.of(context).push(AuroraPageRoute<void>(builder: (_) => const CategoryFormScreen())),
           child: const Icon(Icons.add),
         ),
         body: categoriesAsync.when(
@@ -44,15 +43,11 @@ class CategoriesScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Не удалось загрузить категории',
-                    style: theme.textThemeData.regularMedium),
+                Text('Не удалось загрузить категории', style: theme.textThemeData.regularMedium),
                 const SizedBox(height: 8),
                 Text('$error'),
                 const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => ref.invalidate(categoriesProvider),
-                  child: const Text('Повторить'),
-                ),
+                TextButton(onPressed: () => ref.invalidate(categoriesProvider), child: const Text('Повторить')),
               ],
             ),
           ),
@@ -73,8 +68,7 @@ class CategoriesScreen extends ConsumerWidget {
                 Expanded(
                   child: ListView.builder(
                     itemCount: categories.length,
-                    itemBuilder: (context, index) =>
-                        _CategoryTile(category: categories[index]),
+                    itemBuilder: (context, index) => _CategoryTile(category: categories[index]),
                   ),
                 ),
               ],
@@ -101,11 +95,9 @@ class _CategoryTile extends StatelessWidget {
       subtitle: isStandard ? null : const Text('своя — нажмите для правки'),
       onTap: isStandard
           ? null
-          : () => Navigator.of(context).push(
-                AuroraPageRoute<void>(
-                  builder: (_) => CategoryFormScreen(category: category),
-                ),
-              ),
+          : () => Navigator.of(
+              context,
+            ).push(AuroraPageRoute<void>(builder: (_) => CategoryFormScreen(category: category))),
       trailing: isStandard
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

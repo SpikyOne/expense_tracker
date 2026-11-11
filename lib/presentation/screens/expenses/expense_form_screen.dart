@@ -130,8 +130,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
     }
     final amountKopecks = parseMoneyInput(_amountController.text);
     // В правке _categoryId уже заполнен из БД; фолбэк нужен только добавлению.
-    final categoryId = _categoryId ??
-        (_original?.categoryId ?? (categories.isEmpty ? null : categories.first.id));
+    final categoryId = _categoryId ?? (_original?.categoryId ?? (categories.isEmpty ? null : categories.first.id));
     if (amountKopecks == null || categoryId == null) {
       return; // сумму не пропустит валидатор; без категорий сохранять нечего
     }
@@ -169,9 +168,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       ref.invalidate(filteredExpensesProvider);
       Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось сохранить трату: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось сохранить трату: $e')));
     }
   }
 
@@ -193,9 +190,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       }
     } catch (e) {
       setState(() => _confirmDelete = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось удалить трату: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось удалить трату: $e')));
     }
   }
 
@@ -221,19 +216,13 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
-                  onPressed: () => setState(() => _confirmDelete = false),
-                  child: const Text('Отмена'),
-                ),
+                TextButton(onPressed: () => setState(() => _confirmDelete = false), child: const Text('Отмена')),
                 const SizedBox(width: 8),
                 FilledButton.icon(
                   onPressed: _delete,
                   icon: const Icon(Icons.delete_outline),
                   label: const Text('Удалить'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: errorColor,
-                    foregroundColor: Colors.white,
-                  ),
+                  style: FilledButton.styleFrom(backgroundColor: errorColor, foregroundColor: Colors.white),
                 ),
               ],
             ),
@@ -256,15 +245,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Трата не найдена — возможно, она уже удалена.',
-                  style: theme.textThemeData.regularMedium,
-                ),
+                Text('Трата не найдена — возможно, она уже удалена.', style: theme.textThemeData.regularMedium),
                 const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Назад'),
-                ),
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Назад')),
               ],
             ),
           ),
@@ -337,10 +320,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                 TextFormField(
                   controller: _payeeController,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Получатель платежа',
-                    hintText: 'ООО Ромашка',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Получатель платежа', hintText: 'ООО Ромашка'),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

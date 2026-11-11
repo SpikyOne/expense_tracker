@@ -65,8 +65,7 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
     final lower = text.toLowerCase();
     // Свою категорию исключаем: переименование в своё же имя законно.
     final excludeId = widget.category?.id;
-    final duplicate = existing
-        .any((c) => c.id != excludeId && c.name.toLowerCase() == lower);
+    final duplicate = existing.any((c) => c.id != excludeId && c.name.toLowerCase() == lower);
     if (duplicate) {
       return 'Такая категория уже есть';
     }
@@ -103,9 +102,7 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
       }
       _finishAndPop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось сохранить категорию: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось сохранить категорию: $e')));
     }
   }
 
@@ -119,9 +116,7 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
       ref.read(categoryRepositoryProvider).delete(id);
       _finishAndPop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось удалить категорию: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось удалить категорию: $e')));
     }
   }
 
@@ -133,13 +128,10 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AuroraAppBar(
-          headerText: _isRename ? 'Переименовать категорию' : 'Новая категория',
-        ),
+        appBar: AuroraAppBar(headerText: _isRename ? 'Переименовать категорию' : 'Новая категория'),
         body: categoriesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) =>
-              Center(child: Text('Не удалось загрузить категории: $error')),
+          error: (error, _) => Center(child: Text('Не удалось загрузить категории: $error')),
           data: (categories) => Form(
             key: _formKey,
             child: ListView(
@@ -150,10 +142,7 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
                   autofocus: true,
                   textCapitalization: TextCapitalization.sentences,
                   textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: 'Название',
-                    hintText: _isRename ? null : 'Например, Спортзал',
-                  ),
+                  decoration: InputDecoration(labelText: 'Название', hintText: _isRename ? null : 'Например, Спортзал'),
                   validator: (value) => _validateName(value, categories),
                   // У TextFormField именно onFieldSubmitted (урок М6.2).
                   onFieldSubmitted: (_) => _save(categories),
@@ -173,9 +162,7 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.redAccent,
-                        ),
+                        style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
                         onPressed: () => setState(() => _confirmDelete = true),
                         icon: const Icon(Icons.delete_outline),
                         label: const Text('Удалить категорию'),
@@ -191,16 +178,13 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
                     Row(
                       children: [
                         FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                          ),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
                           onPressed: _delete,
                           child: const Text('Удалить'),
                         ),
                         const SizedBox(width: 12),
                         TextButton(
-                          onPressed: () =>
-                              setState(() => _confirmDelete = false),
+                          onPressed: () => setState(() => _confirmDelete = false),
                           child: const Text('Отмена'),
                         ),
                       ],

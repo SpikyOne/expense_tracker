@@ -50,9 +50,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         backgroundColor: Colors.transparent,
         appBar: const AuroraAppBar(headerText: 'Траты'),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => Navigator.of(context).push(
-            AuroraPageRoute<void>(builder: (_) => const ExpenseFormScreen()),
-          ),
+          onPressed: () => Navigator.of(context).push(AuroraPageRoute<void>(builder: (_) => const ExpenseFormScreen())),
           child: const Icon(Icons.add),
         ),
         body: Column(
@@ -98,10 +96,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'Ничего не найдено по фильтрам и поиску.',
-                              style: theme.textThemeData.regularMedium,
-                            ),
+                            Text('Ничего не найдено по фильтрам и поиску.', style: theme.textThemeData.regularMedium),
                             const SizedBox(height: 16),
                             TextButton.icon(
                               onPressed: _resetFilters,
@@ -120,8 +115,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       ),
                     );
                   }
-                  final total =
-                      expenses.fold<int>(0, (sum, item) => sum + item.expense.amountKopecks);
+                  final total = expenses.fold<int>(0, (sum, item) => sum + item.expense.amountKopecks);
                   return ListView(
                     children: [
                       Padding(
@@ -162,15 +156,9 @@ class _ExpenseTile extends StatelessWidget {
       if (expense.isBusiness) 'служебная',
     ];
     return ListTile(
-      onTap: () => Navigator.of(context).push(
-        AuroraPageRoute<void>(
-          builder: (_) => ExpenseFormScreen(expenseId: expense.id),
-        ),
-      ),
-      title: Text(
-        expense.payee.isEmpty ? item.category.name : expense.payee,
-        style: theme.textThemeData.regularMedium,
-      ),
+      onTap: () =>
+          Navigator.of(context).push(AuroraPageRoute<void>(builder: (_) => ExpenseFormScreen(expenseId: expense.id))),
+      title: Text(expense.payee.isEmpty ? item.category.name : expense.payee, style: theme.textThemeData.regularMedium),
       subtitle: Text(subtitleParts.join(' • ')),
       trailing: Text(formatMoney(expense.amountKopecks), style: theme.textThemeData.regularMedium),
     );
@@ -326,10 +314,7 @@ class _FilterPanelState extends ConsumerState<_FilterPanel> {
                 valueListenable: _searchController,
                 builder: (context, value, _) => value.text.isEmpty
                     ? const SizedBox.shrink()
-                    : IconButton(
-                        onPressed: _clearSearch,
-                        icon: const Icon(Icons.clear),
-                      ),
+                    : IconButton(onPressed: _clearSearch, icon: const Icon(Icons.clear)),
               ),
             ),
             onChanged: _onSearchChanged,
@@ -389,8 +374,7 @@ class _FilterPanelState extends ConsumerState<_FilterPanel> {
                   ChoiceChip(
                     label: Text(category.name),
                     selected: filter.categoryId == category.id,
-                    onSelected: (_) =>
-                        ref.read(expenseFilterProvider.notifier).setCategory(category.id!),
+                    onSelected: (_) => ref.read(expenseFilterProvider.notifier).setCategory(category.id!),
                   ),
               ],
             ),

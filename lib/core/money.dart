@@ -71,9 +71,7 @@ int? parseMoneyInput(String raw) {
   }
 
   final dotIndex = text.indexOf('.');
-  final rubles = dotIndex == -1
-      ? int.parse(text)
-      : int.parse(text.substring(0, dotIndex));
+  final rubles = dotIndex == -1 ? int.parse(text) : int.parse(text.substring(0, dotIndex));
   var kopecks = rubles * 100;
 
   if (dotIndex != -1) {

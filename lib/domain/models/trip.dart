@@ -34,12 +34,7 @@ class Trip {
   /// Последний день поездки включительно, ISO-8601 ('2026-10-25').
   final String endDateIso;
 
-  const Trip({
-    this.id,
-    required this.title,
-    required this.startDateIso,
-    required this.endDateIso,
-  });
+  const Trip({this.id, required this.title, required this.startDateIso, required this.endDateIso});
 
   /// Начало поездки как DateTime - для календаря в форме.
   DateTime get start => DateTime.parse(startDateIso);

@@ -7,8 +7,8 @@
 
 import 'dart:io';
 
-import 'package:expense_tracker/core/formatters.dart';
-import 'package:expense_tracker/core/money.dart';
+import 'package:tracker_1/core/formatters.dart';
+import 'package:tracker_1/core/money.dart';
 
 var failed = 0;
 
@@ -47,11 +47,7 @@ void main() {
   print('--- money: круговой обмен ---');
   for (final raw in const ['0,01', '19,99', '12345,67', '999999,99']) {
     final kopecks = parseMoneyInput(raw) ?? 0;
-    check(
-      'roundtrip: $raw → ${formatMoney(kopecks)}',
-      parseMoneyInput(formatMoney(kopecks)),
-      kopecks,
-    );
+    check('roundtrip: $raw → ${formatMoney(kopecks)}', parseMoneyInput(formatMoney(kopecks)), kopecks);
   }
 
   print('--- dates ---');

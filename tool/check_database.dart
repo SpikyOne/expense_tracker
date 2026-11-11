@@ -9,8 +9,8 @@
 
 import 'dart:io';
 
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 int _passed = 0;
@@ -43,14 +43,14 @@ void checkContains(String name, String? actualError, String needle) {
 }
 
 /// Имена колонок таблицы — через PRAGMA table_info.
-List<String> columnNames(DatabaseService db, String table) =>
-    [for (final row in db.rawSelect('PRAGMA table_info($table);')) row['name'] as String];
+List<String> columnNames(DatabaseService db, String table) => [
+  for (final row in db.rawSelect('PRAGMA table_info($table);')) row['name'] as String,
+];
 
 /// Имена всех таблиц БД — через sqlite_master.
 Set<String> tableNames(DatabaseService db) => {
-      for (final row in db.rawSelect("SELECT name FROM sqlite_master WHERE type = 'table';"))
-        row['name'] as String,
-    };
+  for (final row in db.rawSelect("SELECT name FROM sqlite_master WHERE type = 'table';")) row['name'] as String,
+};
 
 /// Количество строк по запросу вида «SELECT COUNT(*) AS n ...».
 int count(DatabaseService db, String sql) => db.rawSelect(sql).first['n'] as int;
@@ -105,11 +105,7 @@ void main() {
   final cats = db.getCategories();
   check('сид: 8 категорий из ТЗ + «Без категории»', cats.length, 9);
   check('все категории стандартные', cats.every((c) => c.isDefault), true);
-  check(
-    '«Без категории» есть в сиде',
-    cats.map((c) => c.name).contains(DatabaseService.uncategorizedName),
-    true,
-  );
+  check('«Без категории» есть в сиде', cats.map((c) => c.name).contains(DatabaseService.uncategorizedName), true);
 
   // Порядок: 8 стандартных по алфавиту, служебная — последней.
   final namedSorted = [
@@ -163,10 +159,11 @@ void main() {
 
   // Чеки: привязка к трате и каскадное удаление
   final expenseId = db.rawSelect('SELECT MAX(id) AS id FROM expenses;').first['id'] as int;
-  db.rawExecute(
-    'INSERT INTO receipts (expense_id, file_path, created_at) VALUES (?, ?, ?);',
-    [expenseId, 'receipts/2026/10/check.jpg', '2026-10-25T10:00:00'],
-  );
+  db.rawExecute('INSERT INTO receipts (expense_id, file_path, created_at) VALUES (?, ?, ?);', [
+    expenseId,
+    'receipts/2026/10/check.jpg',
+    '2026-10-25T10:00:00',
+  ]);
   check('чек привязан к трате', count(db, 'SELECT COUNT(*) AS n FROM receipts;'), 1);
   db.rawExecute('DELETE FROM expenses WHERE id = ?;', [expenseId]);
   check('каскад: удаление траты удаляет её чеки', count(db, 'SELECT COUNT(*) AS n FROM receipts;'), 0);
@@ -200,8 +197,7 @@ void main() {
   db.close();
 
   // ---------- Файл: миграция живой БД v1 -> v2 ----------
-  final legacyPath =
-      '${Directory.systemTemp.path}/expense_tracker_legacy_${DateTime.now().millisecondsSinceEpoch}.db';
+  final legacyPath = '${Directory.systemTemp.path}/expense_tracker_legacy_${DateTime.now().millisecondsSinceEpoch}.db';
   final legacy = sqlite3.open(legacyPath);
   _createLegacyV1(legacy);
   legacy.dispose();
@@ -221,8 +217,7 @@ void main() {
   File(legacyPath).deleteSync();
 
   // ---------- Файл: свежая БД, повторное открытие ----------
-  final tmpPath =
-      '${Directory.systemTemp.path}/expense_tracker_check_${DateTime.now().millisecondsSinceEpoch}.db';
+  final tmpPath = '${Directory.systemTemp.path}/expense_tracker_check_${DateTime.now().millisecondsSinceEpoch}.db';
   var fileDb = DatabaseService.open(tmpPath);
   fileDb.close();
   fileDb = DatabaseService.open(tmpPath);

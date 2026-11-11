@@ -5,10 +5,10 @@
 // Тонкий фасад: владелец SQL - DAO (М3.2), репозиторий лишь предъявляет
 // его домену под контрактом из domain/repositories.
 
-import 'package:expense_tracker/data/dao/category_dao.dart';
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
-import 'package:expense_tracker/domain/repositories/repositories.dart';
+import 'package:tracker_1/data/dao/category_dao.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
+import 'package:tracker_1/domain/repositories/repositories.dart';
 
 /// SQLite-реализация контракта категорий.
 class CategoryRepositoryImpl implements CategoryRepository {

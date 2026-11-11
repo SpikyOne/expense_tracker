@@ -7,7 +7,7 @@
 // Сигнатуры сознательно повторяют CategoryDao - бизнес-правила (защита
 // стандартных, перенос трат в "Без категории") остаются в DAO.
 
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/domain/models/models.dart';
 
 /// Контракт доступа к категориям.
 abstract class CategoryRepository {

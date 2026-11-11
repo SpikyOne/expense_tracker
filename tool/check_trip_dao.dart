@@ -9,10 +9,10 @@
 
 import 'dart:io';
 
-import 'package:expense_tracker/data/dao/expense_dao.dart';
-import 'package:expense_tracker/data/dao/trip_dao.dart';
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/data/dao/expense_dao.dart';
+import 'package:tracker_1/data/dao/trip_dao.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 int _passed = 0;
@@ -59,9 +59,8 @@ void main() {
   // траты обязаны быть валидными (FK на категорию).
   final categoryId = db.getCategories().first.id!;
 
-  int insertExpense({int? tripId}) => expenseDao.insert(
-    Expense(amountKopecks: 100, dateIso: '2026-10-23', categoryId: categoryId, tripId: tripId),
-  );
+  int insertExpense({int? tripId}) =>
+      expenseDao.insert(Expense(amountKopecks: 100, dateIso: '2026-10-23', categoryId: categoryId, tripId: tripId));
 
   final t1Id = tripDao.insert(const Trip(title: 'Сапсан', startDateIso: '2026-10-22', endDateIso: '2026-10-25'));
   final t2Id = tripDao.insert(const Trip(title: 'Казань', startDateIso: '2026-10-20', endDateIso: '2026-10-21'));

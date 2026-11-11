@@ -3,7 +3,7 @@
 // Контракт репозитория командировок.
 // Удаление поездки НЕ трогает траты: они отвязываются (trip_id -> NULL).
 
-import 'package:expense_tracker/domain/models/models.dart';
+import 'package:tracker_1/domain/models/models.dart';
 
 /// Контракт доступа к командировкам.
 abstract class TripRepository {

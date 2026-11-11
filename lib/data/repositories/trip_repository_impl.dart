@@ -2,10 +2,10 @@
 //
 // Реализация TripRepository поверх TripDao.
 
-import 'package:expense_tracker/data/dao/trip_dao.dart';
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/domain/models/models.dart';
-import 'package:expense_tracker/domain/repositories/repositories.dart';
+import 'package:tracker_1/data/dao/trip_dao.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/domain/models/models.dart';
+import 'package:tracker_1/domain/repositories/repositories.dart';
 
 /// SQLite-реализация контракта командировок.
 class TripRepositoryImpl implements TripRepository {

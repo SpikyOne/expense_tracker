@@ -33,12 +33,7 @@ class Receipt {
   /// Момент создания записи, ISO-8601 ('2026-10-26T10:00:00').
   final String createdAt;
 
-  const Receipt({
-    this.id,
-    required this.expenseId,
-    required this.filePath,
-    required this.createdAt,
-  });
+  const Receipt({this.id, required this.expenseId, required this.filePath, required this.createdAt});
 
   /// Строка для INSERT. id при null не пишем — SQLite подставит AUTOINCREMENT.
   Map<String, Object?> toMap() => {

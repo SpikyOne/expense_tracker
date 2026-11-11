@@ -1,6 +1,6 @@
-name: expense_tracker
+name: tracker_1
 description: "Трекер расходов - учёт личных и служебных расходов для ОС Аврора"
-organization: "ru.grigorev"
+organization: "ru.volgait"
 license: "BSD-3-Clause"
 publish_to: 'none'
 

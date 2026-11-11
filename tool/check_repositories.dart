@@ -13,12 +13,12 @@
 
 import 'dart:io';
 
-import 'package:expense_tracker/data/database/database_service.dart';
-import 'package:expense_tracker/data/repositories/category_repository_impl.dart';
-import 'package:expense_tracker/data/repositories/expense_repository_impl.dart';
-import 'package:expense_tracker/data/repositories/trip_repository_impl.dart';
-import 'package:expense_tracker/domain/models/models.dart';
-import 'package:expense_tracker/domain/repositories/repositories.dart';
+import 'package:tracker_1/data/database/database_service.dart';
+import 'package:tracker_1/data/repositories/category_repository_impl.dart';
+import 'package:tracker_1/data/repositories/expense_repository_impl.dart';
+import 'package:tracker_1/data/repositories/trip_repository_impl.dart';
+import 'package:tracker_1/domain/models/models.dart';
+import 'package:tracker_1/domain/repositories/repositories.dart';
 
 int _passed = 0;
 int _failed = 0;
@@ -67,9 +67,7 @@ void main() {
   check('categories: сид на месте', categories.getAll().length >= 9, true);
   checkThrows<StateError>(
     'categories: стандартную нельзя удалить (правило пробилось через контракт)',
-    () => categories.delete(
-      db.getCategories().firstWhere((c) => c.name == 'Продукты').id!,
-    ),
+    () => categories.delete(db.getCategories().firstWhere((c) => c.name == 'Продукты').id!),
     'нельзя удалить',
   );
 
@@ -121,16 +119,21 @@ void main() {
 
   // ---------- Receipt: маппинг в/из БД (DAO чеков — в М9) ----------
   final receipt = Receipt(expenseId: e1, filePath: 'receipts/2026/10/check.jpg', createdAt: '2026-10-26T10:00:00');
-  db.rawExecute(
-    'INSERT INTO receipts (expense_id, file_path, created_at) VALUES (?, ?, ?);',
-    [receipt.expenseId, receipt.filePath, receipt.createdAt],
-  );
+  db.rawExecute('INSERT INTO receipts (expense_id, file_path, created_at) VALUES (?, ?, ?);', [
+    receipt.expenseId,
+    receipt.filePath,
+    receipt.createdAt,
+  ]);
   final saved = Receipt.fromMap(db.rawSelect('SELECT * FROM receipts WHERE expense_id = ?;', [e1]).first);
   check('receipt: fromMap читает строку БД', saved.filePath, receipt.filePath);
   check('receipt: roundtrip toMap→fromMap', Receipt.fromMap(receipt.toMap()), receipt);
 
   expenses.delete(e1);
-  check('receipt: чеки удаляются каскадом за тратой', db.rawSelect('SELECT COUNT(*) AS n FROM receipts;').first['n'] as int, 0);
+  check(
+    'receipt: чеки удаляются каскадом за тратой',
+    db.rawSelect('SELECT COUNT(*) AS n FROM receipts;').first['n'] as int,
+    0,
+  );
   check('expenses: delete через контракт', expenses.getById(e1), null);
   check('expenses: траты других категорий не тронуты', expenses.getById(e2)!.expense.id, e2);
 
