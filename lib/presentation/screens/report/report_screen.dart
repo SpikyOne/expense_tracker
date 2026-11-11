@@ -40,7 +40,7 @@ class ReportScreen extends ConsumerStatefulWidget {
 class _ReportScreenState extends ConsumerState<ReportScreen> {
   /// Дефолт - Documents текущего пользователя. Литералы абсолютных
   /// путей в коде запрещены: валидатор Авроры отвергает пакет
-  /// (BadPackageContent, «Hardcoded path»).
+  /// (BadPackageContent, "Hardcoded path").
   static String get _defaultDirectory => '${Platform.environment['HOME'] ?? '.'}/Documents';
 
   /// Символы, запрещённые в имени файла на Linux.
@@ -145,8 +145,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     }
   }
 
-  /// «Поделиться»: системный диалог Авроры. Отправляем готовый MD-текст
-  /// с текущим именем отчёта. Ошибка — текстом на экране, не падаем.
+  /// "Поделиться": отчёт сначала сохраняется в файл в общее пространство
+  /// (Documents, Permissions=UserDirs), затем файл уходит в системный
+  /// диалог шеринга Авроры. Файлом, а не текстом: получатели читают
+  /// содержимое по пути, а путь из приватного каталога приложения им
+  /// недоступен; из Documents — доступен. Ошибка — текстом на экране.
   Future<void> _share() async {
     final rows = ref.read(filteredExpensesProvider).value;
     if (rows == null) {
@@ -158,13 +161,34 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final rawName = _nameController.text.trim();
     final title = rawName.isEmpty ? 'Отчёт по тратам' : rawName;
     final md = _buildMd(title: title, categories: categories, rows: rows, receiptIds: receiptIds);
+
+    setState(() => _saving = true);
     try {
-      final result = await SharePlus.instance.share(ShareParams(text: md, subject: title));
+      // 1. Файл отчёта — в выбранную директорию (как при «Сохранить»).
+      final directory = _directoryController.text.trim().isEmpty
+          ? _defaultDirectory
+          : _directoryController.text.trim();
+      final safeName = (rawName.isEmpty ? 'отчёт' : rawName).replaceAll(_badFileNameChars, '_');
+      final fileName = safeName.endsWith('.md') ? safeName : '$safeName.md';
+      final file = File('$directory/$fileName');
+      await file.parent.create(recursive: true);
+      await file.writeAsString(md, encoding: utf8);
+
+      // 2. Системный диалог шеринга — передаём файл.
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/markdown')],
+          text: title,
+          subject: title,
+        ),
+      );
       if (!mounted) return;
-      setState(() => _status = 'Отправлено: ${result.status}');
+      setState(() => _status = 'Файл: ${file.path}. Шеринг: ${result.status}');
     } catch (error) {
       if (!mounted) return;
       setState(() => _status = 'Ошибка отправки: $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
