@@ -27,6 +27,7 @@ import 'presentation/screens/dashboard/dashboard_screen.dart';
 import 'presentation/screens/expenses/expenses_screen.dart';
 import 'presentation/screens/import_csv/import_csv_screen.dart';
 import 'presentation/screens/trips/trips_screen.dart';
+import 'presentation/screens/backup/backup_screen.dart';
 
 import 'core/pin_service.dart';
 import 'presentation/screens/pin/pin_screen.dart';
@@ -85,6 +86,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     'Категории': (_) => const CategoriesScreen(),
     'Командировки': (_) => const TripsScreen(),
     'Импорт CSV': (_) => const ImportCsvScreen(),
+    'Бэкап': (_) => const BackupScreen(),
   };
 
   bool _confirmReset = false;
