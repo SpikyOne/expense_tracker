@@ -12,6 +12,11 @@
 // (Permissions=UserDirs в desktop-файле). Каждое сохранение —
 // в try/catch: ошибка показывается на экране (требование ТЗ про
 // визуальные ошибки при работе с файлами).
+//
+// Шеринг: файл отчёта передаётся в системный диалог Авроры напрямую
+// через DBus-службу org.sailfishos.share (метод share) — тот же путь,
+// что в официальном плагине ОМП share_plus_aurora; чистый Dart,
+// без нативного кода и без share_plus (на Авроре он не реализован).
 
 import 'dart:convert';
 import 'dart:io';
@@ -19,10 +24,10 @@ import 'dart:io';
 import 'package:aurora_controls/aurora_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../domain/models/models.dart';
 import '../../../domain/services/report_service.dart';
+import '../../../domain/services/share_service.dart';
 import '../../../state/expense_filter.dart';
 import '../../../state/providers.dart';
 
@@ -146,10 +151,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   }
 
   /// "Поделиться": отчёт сначала сохраняется в файл в общее пространство
-  /// (Documents, Permissions=UserDirs), затем файл уходит в системный
-  /// диалог шеринга Авроры. Файлом, а не текстом: получатели читают
-  /// содержимое по пути, а путь из приватного каталога приложения им
-  /// недоступен; из Documents — доступен. Ошибка — текстом на экране.
+  /// (Documents, Permissions=UserDirs), затем путь файла уходит в системный
+  /// диалог шеринга Авроры через DBus org.sailfishos.share. Файлом, а не
+  /// текстом: получатели читают содержимое по пути, а путь из приватного
+  /// каталога приложения им недоступен; из Documents — доступен.
   Future<void> _share() async {
     final rows = ref.read(filteredExpensesProvider).value;
     if (rows == null) {
@@ -162,7 +167,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final title = rawName.isEmpty ? 'Отчёт по тратам' : rawName;
     final md = _buildMd(title: title, categories: categories, rows: rows, receiptIds: receiptIds);
 
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _status = null;
+    });
     try {
       // 1. Файл отчёта — в выбранную директорию (как при «Сохранить»).
       final directory = _directoryController.text.trim().isEmpty
@@ -174,16 +182,18 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       await file.parent.create(recursive: true);
       await file.writeAsString(md, encoding: utf8);
 
-      // 2. Системный диалог шеринга — передаём файл.
-      final result = await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path, mimeType: 'text/markdown')],
-          text: title,
-          subject: title,
-        ),
+      // 2. Системный диалог шеринга Авроры — DBus org.sailfishos.share.
+      final ok = await ShareService.shareFile(
+        file.path,
+        title: title,
+        mimeType: 'text/markdown',
       );
       if (!mounted) return;
-      setState(() => _status = 'Файл: ${file.path}. Шеринг: ${result.status}');
+      setState(
+        () => _status = ok
+            ? 'Файл: ${file.path}. Открыт системный диалог «Поделиться».'
+            : 'Файл: ${file.path}. Не удалось открыть диалог «Поделиться».',
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() => _status = 'Ошибка отправки: $error');
@@ -235,7 +245,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: TextButton.icon(
-                      onPressed: _share,
+                      onPressed: _saving ? null : _share,
                       icon: const Icon(Icons.share),
                       label: const Text('Поделиться отчётом'),
                     ),

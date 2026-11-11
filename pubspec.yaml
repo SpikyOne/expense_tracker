@@ -32,6 +32,8 @@ dependencies:
   # SHA-256 для хэша пин-кода. Pure-Dart
   crypto: ^3.0.8
 
+  dbus: ^0.7.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
