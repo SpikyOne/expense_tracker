@@ -9,9 +9,8 @@
 %define license BSD-3-Clause
 
 %define debug_package %{nil}
-%define __strip /bin/true
 
-%define _flutter_build_type Debug
+%define _flutter_build_type Release
 %define _flutter_excludes ^lib(dconf|aurora_embedder|maliit-glib|xkbcommon|.+_platform_plugin)\\.so.*$
 %define _flutter_psdk_version 5.2.1
 %define _flutter_psdk_major 5

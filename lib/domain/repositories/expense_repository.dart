@@ -35,4 +35,7 @@ abstract class ExpenseRepository {
     PaymentMethod? paymentMethod,
     String? searchText,
   });
+
+  /// id трат, у которых есть хотя бы один чек (колонка "Чек" отчёта).
+  Set<int> receiptExpenseIds();
 }

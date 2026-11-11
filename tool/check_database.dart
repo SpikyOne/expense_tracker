@@ -197,7 +197,7 @@ void main() {
   db.close();
 
   // ---------- Файл: миграция живой БД v1 -> v2 ----------
-  final legacyPath = '${Directory.systemTemp.path}/expense_tracker_legacy_${DateTime.now().millisecondsSinceEpoch}.db';
+  final legacyPath = '${Directory.systemTemp.path}/tracker_1_legacy_${DateTime.now().millisecondsSinceEpoch}.db';
   final legacy = sqlite3.open(legacyPath);
   _createLegacyV1(legacy);
   legacy.dispose();
@@ -217,7 +217,7 @@ void main() {
   File(legacyPath).deleteSync();
 
   // ---------- Файл: свежая БД, повторное открытие ----------
-  final tmpPath = '${Directory.systemTemp.path}/expense_tracker_check_${DateTime.now().millisecondsSinceEpoch}.db';
+  final tmpPath = '${Directory.systemTemp.path}/tracker_1_check_${DateTime.now().millisecondsSinceEpoch}.db';
   var fileDb = DatabaseService.open(tmpPath);
   fileDb.close();
   fileDb = DatabaseService.open(tmpPath);

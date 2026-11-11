@@ -132,3 +132,9 @@ final filteredExpensesProvider = FutureProvider<List<ExpenseWithCategory>>((ref)
         searchText: filter.searchText,
       );
 });
+
+/// id трат с чеком — колонка "Чек" MD-отчёта. Отдельный FutureProvider:
+/// отчёт перечитывает его независимо от списка трат.
+final receiptExpenseIdsProvider = FutureProvider<Set<int>>(
+  (ref) => ref.watch(expenseRepositoryProvider).receiptExpenseIds(),
+);

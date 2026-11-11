@@ -22,6 +22,7 @@ import '../../../core/money.dart';
 import '../../../domain/models/models.dart';
 import '../../../state/expense_filter.dart';
 import '../../../state/providers.dart';
+import '../report/report_screen.dart';
 import 'expense_form_screen.dart';
 
 /// Список трат с фильтрами и поиском.
@@ -68,6 +69,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               trailing: Icon(_filtersExpanded ? Icons.expand_less : Icons.expand_more),
             ),
             if (_filtersExpanded) const _FilterPanel(),
+            // MD-отчёт по текущему фильтру (финал).
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.assessment),
+              onTap: () =>
+                  Navigator.of(context).push(AuroraPageRoute<void>(builder: (_) => ReportScreen(filter: filter))),
+              title: Text('Отчёт (MD)', style: theme.textThemeData.regularMedium),
+              trailing: const Icon(Icons.chevron_right),
+            ),
             Expanded(
               child: expensesAsync.when(
                 // Чипы/поиск перезагружают список: держим прежние данные,

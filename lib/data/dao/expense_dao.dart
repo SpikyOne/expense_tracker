@@ -162,4 +162,14 @@ class ExpenseDao {
     );
     return [for (final row in rows) _fromRow(row)];
   }
+
+  /// id трат, у которых есть хотя бы один чек.
+  ///
+  /// Отдельный лёгкий запрос вместо JOIN в query(): колонка «чек»
+  /// нужна только MD-отчёту, тащить её в каждую выборку списка -
+  /// лишнее. DISTINCT: у траты может быть несколько фото чека.
+  Set<int> receiptExpenseIds() {
+    final rows = _db.rawSelect('SELECT DISTINCT expense_id FROM receipts;');
+    return {for (final row in rows) row['expense_id'] as int};
+  }
 }

@@ -39,4 +39,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     paymentMethod: paymentMethod,
     searchText: searchText,
   );
+
+  @override
+  Set<int> receiptExpenseIds() => _dao.receiptExpenseIds();
 }
